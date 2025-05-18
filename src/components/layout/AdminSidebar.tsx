@@ -9,7 +9,8 @@ import {
   ChevronRight,
   BookOpen,
   GraduationCap,
-  Layers
+  Layers,
+  Globe
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
@@ -34,6 +35,11 @@ export function AdminSidebar({ isOpen, onOpenChange }: AdminSidebarProps) {
       title: "Topics",
       icon: Layers,
       href: "/admin/topics"
+    },
+    {
+      title: "Countries",
+      icon: Globe,
+      href: "/admin/countries"
     },
     {
       title: "Users",
