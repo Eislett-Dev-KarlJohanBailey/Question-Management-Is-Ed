@@ -6,7 +6,10 @@ import {
   Users,
   Settings,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  BookOpen,
+  GraduationCap,
+  Layers
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
@@ -21,6 +24,16 @@ export function AdminSidebar({ isOpen, onOpenChange }: AdminSidebarProps) {
       title: "Dashboard",
       icon: LayoutDashboard,
       href: "/admin"
+    },
+    {
+      title: "Subjects",
+      icon: BookOpen,
+      href: "/admin/subjects"
+    },
+    {
+      title: "Topics",
+      icon: Layers,
+      href: "/admin/topics"
     },
     {
       title: "Users",

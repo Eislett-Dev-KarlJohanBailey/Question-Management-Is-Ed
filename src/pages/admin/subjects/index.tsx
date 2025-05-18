@@ -4,8 +4,21 @@ import { AdminLayout } from "@/components/layout/AdminLayout"
 import { DataManagementLayout } from "@/components/layout/DataManagementLayout"
 import { DataTable } from "@/components/data/DataTable"
 import { FilterControls } from "@/components/data/FilterControls"
+import { DataFormDrawer } from "@/components/data/DataFormDrawer"
+import { DeleteConfirmationDialog } from "@/components/data/DeleteConfirmationDialog"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@/components/ui/select"
+import { Switch } from "@/components/ui/switch"
 import { Edit, Eye, MoreHorizontal, Trash } from "lucide-react"
 import {
   DropdownMenu,
@@ -22,6 +35,7 @@ const MOCK_SUBJECTS = [
   { 
     id: "1", 
     name: "Mathematics", 
+    description: "Study of numbers, quantities, and shapes",
     category: "Science",
     status: "active",
     topics: 24,
@@ -30,6 +44,7 @@ const MOCK_SUBJECTS = [
   { 
     id: "2", 
     name: "Physics", 
+    description: "Study of matter, energy, and the interaction between them",
     category: "Science",
     status: "active",
     topics: 18,
@@ -38,6 +53,7 @@ const MOCK_SUBJECTS = [
   { 
     id: "3", 
     name: "Literature", 
+    description: "Study of written works, especially those considered of superior or lasting artistic merit",
     category: "Humanities",
     status: "inactive",
     topics: 12,
@@ -46,6 +62,7 @@ const MOCK_SUBJECTS = [
   { 
     id: "4", 
     name: "History", 
+    description: "Study of past events, particularly in human affairs",
     category: "Humanities",
     status: "active",
     topics: 30,
@@ -54,12 +71,22 @@ const MOCK_SUBJECTS = [
   { 
     id: "5", 
     name: "Computer Science", 
+    description: "Study of computers and computational systems",
     category: "Technology",
     status: "active",
     topics: 22,
     createdAt: "2025-02-25"
   }
 ]
+
+// Subject form type
+interface SubjectFormData {
+  id?: string
+  name: string
+  description: string
+  category: string
+  status: string
+}
 
 export default function SubjectsPage() {
   const router = useRouter()
@@ -74,25 +101,122 @@ export default function SubjectsPage() {
     search: ""
   })
   
-  // Simulate adding a new subject
+  // Form drawer state
+  const [formDrawerOpen, setFormDrawerOpen] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [currentSubject, setCurrentSubject] = useState<SubjectFormData>({
+    name: "",
+    description: "",
+    category: "",
+    status: "active"
+  })
+  const [isEditMode, setIsEditMode] = useState(false)
+  
+  // Delete dialog state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [subjectToDelete, setSubjectToDelete] = useState<string | null>(null)
+  
+  // Handle form input changes
+  const handleFormChange = (field: keyof SubjectFormData, value: string) => {
+    setCurrentSubject(prev => ({
+      ...prev,
+      [field]: value
+    }))
+  }
+  
+  // Open form drawer for creating a new subject
   const handleAddNew = () => {
-    router.push("/admin/subjects/new")
+    setCurrentSubject({
+      name: "",
+      description: "",
+      category: "",
+      status: "active"
+    })
+    setIsEditMode(false)
+    setFormDrawerOpen(true)
+  }
+  
+  // Open form drawer for editing a subject
+  const handleEdit = (id: string) => {
+    const subjectToEdit = subjects.find(subject => subject.id === id)
+    if (subjectToEdit) {
+      setCurrentSubject({
+        id: subjectToEdit.id,
+        name: subjectToEdit.name,
+        description: subjectToEdit.description,
+        category: subjectToEdit.category,
+        status: subjectToEdit.status
+      })
+      setIsEditMode(true)
+      setFormDrawerOpen(true)
+    }
+  }
+  
+  // Handle form submission
+  const handleFormSubmit = () => {
+    setIsSubmitting(true)
+    
+    // Simulate API call
+    setTimeout(() => {
+      if (isEditMode && currentSubject.id) {
+        // Update existing subject
+        setSubjects(prev => 
+          prev.map(subject => 
+            subject.id === currentSubject.id 
+              ? { 
+                  ...subject, 
+                  name: currentSubject.name,
+                  description: currentSubject.description,
+                  category: currentSubject.category,
+                  status: currentSubject.status
+                } 
+              : subject
+          )
+        )
+      } else {
+        // Create new subject
+        const newSubject = {
+          id: `${subjects.length + 1}`,
+          name: currentSubject.name,
+          description: currentSubject.description,
+          category: currentSubject.category,
+          status: currentSubject.status,
+          topics: 0,
+          createdAt: new Date().toISOString().split("T")[0]
+        }
+        setSubjects(prev => [...prev, newSubject])
+      }
+      
+      setIsSubmitting(false)
+      setFormDrawerOpen(false)
+    }, 1000)
+  }
+  
+  // Open delete confirmation dialog
+  const handleDeleteClick = (id: string) => {
+    setSubjectToDelete(id)
+    setDeleteDialogOpen(true)
+  }
+  
+  // Handle delete confirmation
+  const handleDeleteConfirm = () => {
+    if (!subjectToDelete) return
+    
+    setIsDeleting(true)
+    
+    // Simulate API call
+    setTimeout(() => {
+      setSubjects(subjects.filter(subject => subject.id !== subjectToDelete))
+      setIsDeleting(false)
+      setDeleteDialogOpen(false)
+      setSubjectToDelete(null)
+    }, 1000)
   }
   
   // Simulate viewing a subject
   const handleViewSubject = (id: string) => {
     router.push(`/admin/subjects/${id}`)
-  }
-  
-  // Simulate editing a subject
-  const handleEditSubject = (id: string) => {
-    router.push(`/admin/subjects/${id}/edit`)
-  }
-  
-  // Simulate deleting a subject
-  const handleDeleteSubject = (id: string) => {
-    // In a real app, you would call an API to delete the subject
-    setSubjects(subjects.filter(subject => subject.id !== id))
   }
   
   // Simulate searching
@@ -194,13 +318,13 @@ export default function SubjectsPage() {
                 <Eye className="mr-2 h-4 w-4" />
                 View
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleEditSubject(subject.id)}>
+              <DropdownMenuItem onClick={() => handleEdit(subject.id)}>
                 <Edit className="mr-2 h-4 w-4" />
                 Edit
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem 
-                onClick={() => handleDeleteSubject(subject.id)}
+                onClick={() => handleDeleteClick(subject.id)}
                 className="text-destructive focus:text-destructive"
               >
                 <Trash className="mr-2 h-4 w-4" />
@@ -300,6 +424,86 @@ export default function SubjectsPage() {
           }
         />
       </DataManagementLayout>
+      
+      {/* Subject Form Drawer */}
+      <DataFormDrawer
+        title={isEditMode ? "Edit Subject" : "Add New Subject"}
+        description={isEditMode ? "Update subject details" : "Create a new subject"}
+        open={formDrawerOpen}
+        onOpenChange={setFormDrawerOpen}
+        onSubmit={handleFormSubmit}
+        isSubmitting={isSubmitting}
+        submitLabel={isEditMode ? "Save Changes" : "Create Subject"}
+        size="md"
+      >
+        <div className="space-y-6">
+          <div className="space-y-2">
+            <Label htmlFor="name">Subject Name</Label>
+            <Input
+              id="name"
+              value={currentSubject.name}
+              onChange={(e) => handleFormChange("name", e.target.value)}
+              placeholder="Enter subject name"
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="description">Description</Label>
+            <Textarea
+              id="description"
+              value={currentSubject.description}
+              onChange={(e) => handleFormChange("description", e.target.value)}
+              placeholder="Enter subject description"
+              rows={4}
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="category">Category</Label>
+            <Select
+              value={currentSubject.category}
+              onValueChange={(value) => handleFormChange("category", value)}
+            >
+              <SelectTrigger id="category">
+                <SelectValue placeholder="Select a category" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Science">Science</SelectItem>
+                <SelectItem value="Humanities">Humanities</SelectItem>
+                <SelectItem value="Technology">Technology</SelectItem>
+                <SelectItem value="Arts">Arts</SelectItem>
+                <SelectItem value="Business">Business</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="status">Status</Label>
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="status"
+                checked={currentSubject.status === "active"}
+                onCheckedChange={(checked) => 
+                  handleFormChange("status", checked ? "active" : "inactive")
+                }
+              />
+              <Label htmlFor="status" className="text-sm font-normal">
+                {currentSubject.status === "active" ? "Active" : "Inactive"}
+              </Label>
+            </div>
+          </div>
+        </div>
+      </DataFormDrawer>
+      
+      {/* Delete Confirmation Dialog */}
+      <DeleteConfirmationDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onConfirm={handleDeleteConfirm}
+        isDeleting={isDeleting}
+        title="Delete Subject"
+        description="Are you sure you want to delete this subject? This action cannot be undone and will remove all associated topics and content."
+      />
     </AdminLayout>
   )
 }
