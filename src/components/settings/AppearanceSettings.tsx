@@ -7,28 +7,40 @@ import { Slider } from "@/components/ui/slider"
 import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
-import { Sun, Moon, Monitor, Check } from "lucide-react"
+import { Sun, Moon, Monitor, Check, RotateCcw, Paintbrush, Palette, Eye } from "lucide-react"
 import { useTheme } from "@/contexts/ThemeContext"
 import { useColorScheme } from "@/hooks/useColorScheme"
 import { toast } from "@/hooks/use-toast"
+import { Badge } from "@/components/ui/badge"
 
 export function AppearanceSettings() {
-  const { settings, updateSettings } = useTheme()
+  const { settings, updateSettings, resetSettings } = useTheme()
   const [localSettings, setLocalSettings] = useState(settings)
+  const [hasChanges, setHasChanges] = useState(false)
   
-  // Apply color scheme
+  // Apply color scheme immediately
   useColorScheme(localSettings.colorScheme)
   
   // Update local settings when context settings change
   useEffect(() => {
     setLocalSettings(settings)
+    setHasChanges(false)
   }, [settings])
   
   const handleSave = () => {
     updateSettings(localSettings)
+    setHasChanges(false)
     toast({
       title: "Settings saved",
       description: "Your appearance settings have been saved.",
+    })
+  }
+  
+  const handleReset = () => {
+    resetSettings()
+    toast({
+      title: "Settings reset",
+      description: "Your appearance settings have been reset to defaults.",
     })
   }
   
@@ -36,21 +48,58 @@ export function AppearanceSettings() {
     key: K,
     value: typeof localSettings[K]
   ) => {
-    setLocalSettings(prev => ({ ...prev, [key]: value }))
+    const newSettings = { ...localSettings, [key]: value }
+    setLocalSettings(newSettings)
+    setHasChanges(true)
+    
+    // Apply changes immediately
+    updateSettings({ [key]: value })
+  }
+  
+  const colorSchemePreview = {
+    blue: "bg-blue-500",
+    green: "bg-green-500",
+    violet: "bg-violet-500",
+    rose: "bg-rose-500",
+    orange: "bg-orange-500"
   }
   
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Theme</CardTitle>
-          <CardDescription>
-            Choose your preferred theme and appearance settings.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="space-y-2">
-            <Label>Mode</Label>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-semibold tracking-tight">Appearance</h2>
+          <p className="text-sm text-muted-foreground">
+            Customize how the admin panel looks and feels.
+          </p>
+        </div>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={handleReset}
+          className="flex items-center gap-2"
+        >
+          <RotateCcw className="h-4 w-4" />
+          Reset to Defaults
+        </Button>
+      </div>
+      
+      <div className="grid gap-6 md:grid-cols-2">
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <CardTitle className="flex items-center gap-2">
+                  <Palette className="h-5 w-5 text-primary" />
+                  Theme Mode
+                </CardTitle>
+                <CardDescription>
+                  Choose your preferred theme mode.
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
             <RadioGroup 
               value={localSettings.theme} 
               onValueChange={(value) => handleChange("theme", value as "light" | "dark" | "system")}
@@ -64,10 +113,10 @@ export function AppearanceSettings() {
                 />
                 <Label 
                   htmlFor="light" 
-                  className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
+                  className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary transition-all"
                 >
-                  <Sun className="mb-3 h-6 w-6" />
-                  Light
+                  <Sun className="mb-3 h-8 w-8 text-orange-500" />
+                  <span className="font-medium">Light</span>
                 </Label>
               </div>
               
@@ -79,10 +128,10 @@ export function AppearanceSettings() {
                 />
                 <Label 
                   htmlFor="dark" 
-                  className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
+                  className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary transition-all"
                 >
-                  <Moon className="mb-3 h-6 w-6" />
-                  Dark
+                  <Moon className="mb-3 h-8 w-8 text-indigo-500" />
+                  <span className="font-medium">Dark</span>
                 </Label>
               </div>
               
@@ -94,91 +143,121 @@ export function AppearanceSettings() {
                 />
                 <Label 
                   htmlFor="system" 
-                  className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
+                  className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary transition-all"
                 >
-                  <Monitor className="mb-3 h-6 w-6" />
-                  System
+                  <Monitor className="mb-3 h-8 w-8 text-gray-500" />
+                  <span className="font-medium">System</span>
                 </Label>
               </div>
             </RadioGroup>
-          </div>
-          
-          <div className="space-y-2">
-            <Label>Color Scheme</Label>
-            <Select 
-              value={localSettings.colorScheme} 
-              onValueChange={(value) => handleChange("colorScheme", value as "blue" | "green" | "violet" | "rose" | "orange")}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select a color scheme" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="blue">Blue</SelectItem>
-                <SelectItem value="green">Green</SelectItem>
-                <SelectItem value="violet">Violet</SelectItem>
-                <SelectItem value="rose">Rose</SelectItem>
-                <SelectItem value="orange">Orange</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <CardTitle className="flex items-center gap-2">
+                  <Paintbrush className="h-5 w-5 text-primary" />
+                  Color Scheme
+                </CardTitle>
+                <CardDescription>
+                  Select your preferred color palette.
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-5 gap-3">
+              {(["blue", "green", "violet", "rose", "orange"] as const).map((color) => (
+                <button
+                  key={color}
+                  onClick={() => handleChange("colorScheme", color)}
+                  className={`h-16 rounded-md flex flex-col items-center justify-center gap-1 border-2 transition-all ${
+                    localSettings.colorScheme === color 
+                      ? "border-primary ring-2 ring-primary/20" 
+                      : "border-muted hover:border-primary/50"
+                  }`}
+                >
+                  <span className={`w-6 h-6 rounded-full ${colorSchemePreview[color]}`}></span>
+                  <span className="text-xs font-medium capitalize">{color}</span>
+                </button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
       
       <Card>
-        <CardHeader>
-          <CardTitle>Accessibility</CardTitle>
-          <CardDescription>
-            Customize your viewing experience.
-          </CardDescription>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <CardTitle className="flex items-center gap-2">
+                <Eye className="h-5 w-5 text-primary" />
+                Accessibility
+              </CardTitle>
+              <CardDescription>
+                Customize your viewing experience.
+              </CardDescription>
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="space-y-2">
-            <div className="flex justify-between">
-              <Label htmlFor="font-size">Font Size ({localSettings.fontSize}px)</Label>
-              <span className="text-sm text-muted-foreground">{localSettings.fontSize}px</span>
+          <div className="space-y-4">
+            <div>
+              <div className="flex justify-between mb-2">
+                <Label htmlFor="font-size" className="text-sm font-medium">Font Size</Label>
+                <Badge variant="outline">{localSettings.fontSize}px</Badge>
+              </div>
+              <div className="flex items-center gap-4">
+                <span className="text-xs">A</span>
+                <Slider 
+                  id="font-size"
+                  min={12} 
+                  max={24} 
+                  step={1} 
+                  value={[localSettings.fontSize]} 
+                  onValueChange={(value) => handleChange("fontSize", value[0])} 
+                  className="flex-1"
+                />
+                <span className="text-lg">A</span>
+              </div>
             </div>
-            <Slider 
-              id="font-size"
-              min={12} 
-              max={24} 
-              step={1} 
-              value={[localSettings.fontSize]} 
-              onValueChange={(value) => handleChange("fontSize", value[0])} 
-            />
-          </div>
-          
-          <div className="space-y-2">
-            <div className="flex justify-between">
-              <Label htmlFor="contrast">Contrast ({localSettings.contrast}%)</Label>
-              <span className="text-sm text-muted-foreground">{localSettings.contrast}%</span>
+            
+            <div>
+              <div className="flex justify-between mb-2">
+                <Label htmlFor="contrast" className="text-sm font-medium">Contrast</Label>
+                <Badge variant="outline">{localSettings.contrast}%</Badge>
+              </div>
+              <div className="flex items-center gap-4">
+                <span className="text-xs opacity-50">Low</span>
+                <Slider 
+                  id="contrast"
+                  min={75} 
+                  max={125} 
+                  step={5} 
+                  value={[localSettings.contrast]} 
+                  onValueChange={(value) => handleChange("contrast", value[0])} 
+                  className="flex-1"
+                />
+                <span className="text-xs font-bold">High</span>
+              </div>
             </div>
-            <Slider 
-              id="contrast"
-              min={75} 
-              max={125} 
-              step={5} 
-              value={[localSettings.contrast]} 
-              onValueChange={(value) => handleChange("contrast", value[0])} 
-            />
-          </div>
-          
-          <div className="flex items-center justify-between space-x-2">
-            <Label htmlFor="reduced-motion">Reduced Motion</Label>
-            <Switch 
-              id="reduced-motion" 
-              checked={localSettings.reducedMotion} 
-              onCheckedChange={(checked) => handleChange("reducedMotion", checked)} 
-            />
+            
+            <div className="flex items-center justify-between pt-2">
+              <div className="space-y-0.5">
+                <Label htmlFor="reduced-motion" className="text-sm font-medium">Reduced Motion</Label>
+                <p className="text-xs text-muted-foreground">Minimize animations throughout the interface</p>
+              </div>
+              <Switch 
+                id="reduced-motion" 
+                checked={localSettings.reducedMotion} 
+                onCheckedChange={(checked) => handleChange("reducedMotion", checked)} 
+              />
+            </div>
           </div>
         </CardContent>
       </Card>
-      
-      <div className="flex justify-end">
-        <Button onClick={handleSave} className="flex items-center gap-2">
-          <Check className="h-4 w-4" />
-          Save Changes
-        </Button>
-      </div>
     </div>
   )
 }
