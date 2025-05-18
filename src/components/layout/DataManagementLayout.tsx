@@ -88,33 +88,22 @@ export function DataManagementLayout({
     
     // Get search from URL
     const searchFromUrl = router.query.search as string
-    if (searchFromUrl !== undefined) {
+    if (searchFromUrl) {
       setSearchValue(searchFromUrl)
-      if (!isInitialized) {
-        onSearch?.(searchFromUrl)
-      }
-    } else if (isInitialized && searchValue) {
-      // Clear search value if it's not in URL
-      setSearchValue("")
     }
     
     // Get sort from URL
     const sortFromUrl = router.query.sort as string
     if (sortFromUrl && sortOptions?.some(option => option.value === sortFromUrl)) {
       setCurrentSort(sortFromUrl)
-      if (!isInitialized) {
-        onSortChange?.(sortFromUrl)
-      }
     }
     
     // Get filter visibility from URL
     const showFiltersFromUrl = router.query.showFilters === "true"
     setShowFilters(showFiltersFromUrl)
     
-    if (!isInitialized) {
-      setIsInitialized(true)
-    }
-  }, [router.isReady, router.query, onSearch, onSortChange, sortOptions, isInitialized, searchValue])
+    setIsInitialized(true)
+  }, [router.isReady, router.query, sortOptions])
   
   // Update URL and trigger search when debounced search value changes
   useEffect(() => {
@@ -135,7 +124,7 @@ export function DataManagementLayout({
     
     // Trigger search callback
     onSearch?.(debouncedSearchValue)
-  }, [debouncedSearchValue, router, isInitialized, onSearch])
+  }, [debouncedSearchValue, router, isInitialized, onSearch, router.pathname])
   
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value
