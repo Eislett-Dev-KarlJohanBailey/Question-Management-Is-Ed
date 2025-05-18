@@ -1,5 +1,5 @@
 
-import { ReactNode, useState } from "react"
+import { ReactNode } from "react"
 import { X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -20,7 +20,7 @@ import {
   SheetHeader,
   SheetTitle
 } from "@/components/ui/sheet"
-import { useMobileDetect } from "@/hooks/use-mobile"
+import { useIsMobile } from "@/hooks/use-mobile"
 
 export interface DataFormDrawerProps {
   title: string
@@ -47,7 +47,7 @@ export function DataFormDrawer({
   children,
   size = "md"
 }: DataFormDrawerProps) {
-  const isMobile = useMobileDetect()
+  const isMobile = useIsMobile()
   
   const handleSubmit = () => {
     onSubmit()
@@ -87,7 +87,6 @@ export function DataFormDrawer({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         className={`${sizeClasses[size]} p-0 flex flex-col h-full`}
-        showX={false}
       >
         <SheetHeader className="border-b px-6 py-4">
           <div className="flex items-center justify-between">
