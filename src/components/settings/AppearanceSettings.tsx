@@ -5,9 +5,8 @@ import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Slider } from "@/components/ui/slider"
 import { Switch } from "@/components/ui/switch"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
-import { Sun, Moon, Monitor, Check, RotateCcw, Paintbrush, Palette, Eye } from "lucide-react"
+import { Sun, Moon, Monitor, RotateCcw, Paintbrush, Palette, Eye } from "lucide-react"
 import { useTheme } from "@/contexts/ThemeContext"
 import { useColorScheme } from "@/hooks/useColorScheme"
 import { toast } from "@/hooks/use-toast"
@@ -66,9 +65,9 @@ export function AppearanceSettings() {
   
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-semibold tracking-tight">Appearance</h2>
+          <h2 className="text-xl sm:text-2xl font-semibold tracking-tight">Appearance</h2>
           <p className="text-sm text-muted-foreground">
             Customize how the admin panel looks and feels.
           </p>
@@ -77,23 +76,23 @@ export function AppearanceSettings() {
           variant="outline" 
           size="sm" 
           onClick={handleReset}
-          className="flex items-center gap-2"
+          className="flex items-center gap-2 self-start sm:self-center"
         >
           <RotateCcw className="h-4 w-4" />
-          Reset to Defaults
+          <span className="whitespace-nowrap">Reset to Defaults</span>
         </Button>
       </div>
       
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2">
         <Card>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <div className="space-y-1">
-                <CardTitle className="flex items-center gap-2">
-                  <Palette className="h-5 w-5 text-primary" />
+                <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                  <Palette className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                   Theme Mode
                 </CardTitle>
-                <CardDescription>
+                <CardDescription className="text-xs sm:text-sm">
                   Choose your preferred theme mode.
                 </CardDescription>
               </div>
@@ -103,7 +102,7 @@ export function AppearanceSettings() {
             <RadioGroup 
               value={localSettings.theme} 
               onValueChange={(value) => handleChange("theme", value as "light" | "dark" | "system")}
-              className="grid grid-cols-3 gap-4"
+              className="grid grid-cols-3 gap-2 sm:gap-4"
             >
               <div>
                 <RadioGroupItem 
@@ -113,10 +112,10 @@ export function AppearanceSettings() {
                 />
                 <Label 
                   htmlFor="light" 
-                  className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary transition-all"
+                  className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-2 sm:p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary transition-all"
                 >
-                  <Sun className="mb-3 h-8 w-8 text-orange-500" />
-                  <span className="font-medium">Light</span>
+                  <Sun className="mb-2 sm:mb-3 h-6 w-6 sm:h-8 sm:w-8 text-orange-500" />
+                  <span className="text-sm sm:text-base font-medium">Light</span>
                 </Label>
               </div>
               
@@ -128,10 +127,10 @@ export function AppearanceSettings() {
                 />
                 <Label 
                   htmlFor="dark" 
-                  className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary transition-all"
+                  className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-2 sm:p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary transition-all"
                 >
-                  <Moon className="mb-3 h-8 w-8 text-indigo-500" />
-                  <span className="font-medium">Dark</span>
+                  <Moon className="mb-2 sm:mb-3 h-6 w-6 sm:h-8 sm:w-8 text-indigo-500" />
+                  <span className="text-sm sm:text-base font-medium">Dark</span>
                 </Label>
               </div>
               
@@ -143,10 +142,10 @@ export function AppearanceSettings() {
                 />
                 <Label 
                   htmlFor="system" 
-                  className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary transition-all"
+                  className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-2 sm:p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary transition-all"
                 >
-                  <Monitor className="mb-3 h-8 w-8 text-gray-500" />
-                  <span className="font-medium">System</span>
+                  <Monitor className="mb-2 sm:mb-3 h-6 w-6 sm:h-8 sm:w-8 text-gray-500" />
+                  <span className="text-sm sm:text-base font-medium">System</span>
                 </Label>
               </div>
             </RadioGroup>
@@ -157,29 +156,29 @@ export function AppearanceSettings() {
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <div className="space-y-1">
-                <CardTitle className="flex items-center gap-2">
-                  <Paintbrush className="h-5 w-5 text-primary" />
+                <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                  <Paintbrush className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                   Color Scheme
                 </CardTitle>
-                <CardDescription>
+                <CardDescription className="text-xs sm:text-sm">
                   Select your preferred color palette.
                 </CardDescription>
               </div>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-5 gap-3">
+            <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 sm:gap-3">
               {(["blue", "green", "violet", "rose", "orange"] as const).map((color) => (
                 <button
                   key={color}
                   onClick={() => handleChange("colorScheme", color)}
-                  className={`h-16 rounded-md flex flex-col items-center justify-center gap-1 border-2 transition-all ${
+                  className={`h-14 sm:h-16 rounded-md flex flex-col items-center justify-center gap-1 border-2 transition-all ${
                     localSettings.colorScheme === color 
                       ? "border-primary ring-2 ring-primary/20" 
                       : "border-muted hover:border-primary/50"
                   }`}
                 >
-                  <span className={`w-6 h-6 rounded-full ${colorSchemePreview[color]}`}></span>
+                  <span className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full ${colorSchemePreview[color]}`}></span>
                   <span className="text-xs font-medium capitalize">{color}</span>
                 </button>
               ))}
@@ -192,11 +191,11 @@ export function AppearanceSettings() {
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <div className="space-y-1">
-              <CardTitle className="flex items-center gap-2">
-                <Eye className="h-5 w-5 text-primary" />
+              <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                <Eye className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                 Accessibility
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-xs sm:text-sm">
                 Customize your viewing experience.
               </CardDescription>
             </div>
@@ -206,10 +205,10 @@ export function AppearanceSettings() {
           <div className="space-y-4">
             <div>
               <div className="flex justify-between mb-2">
-                <Label htmlFor="font-size" className="text-sm font-medium">Font Size</Label>
-                <Badge variant="outline">{localSettings.fontSize}px</Badge>
+                <Label htmlFor="font-size" className="text-xs sm:text-sm font-medium">Font Size</Label>
+                <Badge variant="outline" className="text-xs">{localSettings.fontSize}px</Badge>
               </div>
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 sm:gap-4">
                 <span className="text-xs">A</span>
                 <Slider 
                   id="font-size"
@@ -220,16 +219,16 @@ export function AppearanceSettings() {
                   onValueChange={(value) => handleChange("fontSize", value[0])} 
                   className="flex-1"
                 />
-                <span className="text-lg">A</span>
+                <span className="text-base sm:text-lg">A</span>
               </div>
             </div>
             
             <div>
               <div className="flex justify-between mb-2">
-                <Label htmlFor="contrast" className="text-sm font-medium">Contrast</Label>
-                <Badge variant="outline">{localSettings.contrast}%</Badge>
+                <Label htmlFor="contrast" className="text-xs sm:text-sm font-medium">Contrast</Label>
+                <Badge variant="outline" className="text-xs">{localSettings.contrast}%</Badge>
               </div>
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 sm:gap-4">
                 <span className="text-xs opacity-50">Low</span>
                 <Slider 
                   id="contrast"
@@ -244,9 +243,9 @@ export function AppearanceSettings() {
               </div>
             </div>
             
-            <div className="flex items-center justify-between pt-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between pt-2 gap-2">
               <div className="space-y-0.5">
-                <Label htmlFor="reduced-motion" className="text-sm font-medium">Reduced Motion</Label>
+                <Label htmlFor="reduced-motion" className="text-xs sm:text-sm font-medium">Reduced Motion</Label>
                 <p className="text-xs text-muted-foreground">Minimize animations throughout the interface</p>
               </div>
               <Switch 

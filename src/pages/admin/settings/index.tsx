@@ -11,33 +11,35 @@ export default function SettingsPage() {
 
   return (
     <AdminLayout>
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
-          <p className="text-muted-foreground">
+      <div className="space-y-6 px-2 sm:px-4">
+        <div className="space-y-1">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Settings</h1>
+          <p className="text-sm text-muted-foreground">
             Manage your account settings and preferences.
           </p>
         </div>
         
         <Tabs defaultValue="appearance" value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="grid grid-cols-2 md:grid-cols-4 gap-2">
-            <TabsTrigger value="appearance" className="flex items-center gap-2">
-              <Palette className="h-4 w-4" />
-              <span className="hidden sm:inline">Appearance</span>
-            </TabsTrigger>
-            <TabsTrigger value="notifications" className="flex items-center gap-2">
-              <Bell className="h-4 w-4" />
-              <span className="hidden sm:inline">Notifications</span>
-            </TabsTrigger>
-            <TabsTrigger value="security" className="flex items-center gap-2">
-              <Shield className="h-4 w-4" />
-              <span className="hidden sm:inline">Security</span>
-            </TabsTrigger>
-            <TabsTrigger value="localization" className="flex items-center gap-2">
-              <Globe className="h-4 w-4" />
-              <span className="hidden sm:inline">Localization</span>
-            </TabsTrigger>
-          </TabsList>
+          <div className="overflow-x-auto pb-2 -mx-2 px-2">
+            <TabsList className="w-full grid grid-cols-4 gap-1 sm:gap-2">
+              <TabsTrigger value="appearance" className="flex items-center justify-center gap-1 sm:gap-2 px-2 sm:px-4">
+                <Palette className="h-4 w-4" />
+                <span className="hidden xs:inline text-xs sm:text-sm">Appearance</span>
+              </TabsTrigger>
+              <TabsTrigger value="notifications" className="flex items-center justify-center gap-1 sm:gap-2 px-2 sm:px-4">
+                <Bell className="h-4 w-4" />
+                <span className="hidden xs:inline text-xs sm:text-sm">Notifications</span>
+              </TabsTrigger>
+              <TabsTrigger value="security" className="flex items-center justify-center gap-1 sm:gap-2 px-2 sm:px-4">
+                <Shield className="h-4 w-4" />
+                <span className="hidden xs:inline text-xs sm:text-sm">Security</span>
+              </TabsTrigger>
+              <TabsTrigger value="localization" className="flex items-center justify-center gap-1 sm:gap-2 px-2 sm:px-4">
+                <Globe className="h-4 w-4" />
+                <span className="hidden xs:inline text-xs sm:text-sm">Localization</span>
+              </TabsTrigger>
+            </TabsList>
+          </div>
           
           <TabsContent value="appearance" className="space-y-4">
             <AppearanceSettings />
