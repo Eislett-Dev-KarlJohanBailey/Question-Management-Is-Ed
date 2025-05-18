@@ -11,7 +11,8 @@ import {
   GraduationCap,
   Layers,
   Globe,
-  Building
+  Building,
+  BookText
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
@@ -31,6 +32,11 @@ export function AdminSidebar({ isOpen, onOpenChange }: AdminSidebarProps) {
       title: "Subjects",
       icon: BookOpen,
       href: "/admin/subjects"
+    },
+    {
+      title: "Courses",
+      icon: BookText,
+      href: "/admin/courses"
     },
     {
       title: "Topics",
