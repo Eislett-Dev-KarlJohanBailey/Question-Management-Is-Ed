@@ -31,6 +31,7 @@ import {
 import { cn } from "@/lib/utils"
 import { Card } from "@/components/ui/card"
 import { useRouter } from "next/router"
+import { useDebounce } from "@/hooks/use-debounce"
 
 export interface DataManagementLayoutProps {
   title: string
@@ -78,6 +79,9 @@ export function DataManagementLayout({
   const [currentSort, setCurrentSort] = useState(defaultSort || "")
   const [isInitialized, setIsInitialized] = useState(false)
   
+  // Debounce search value to prevent excessive URL updates and API calls
+  const debouncedSearchValue = useDebounce(searchValue, 300)
+  
   // Initialize from URL query params
   useEffect(() => {
     if (!router.isReady) return
@@ -112,29 +116,30 @@ export function DataManagementLayout({
     }
   }, [router.isReady, router.query, onSearch, onSortChange, sortOptions, isInitialized, searchValue])
   
+  // Update URL and trigger search when debounced search value changes
+  useEffect(() => {
+    if (!isInitialized) return
+    
+    // Update URL
+    const query = { ...router.query }
+    if (debouncedSearchValue) {
+      query.search = debouncedSearchValue
+    } else {
+      delete query.search
+    }
+    
+    router.push({
+      pathname: router.pathname,
+      query
+    }, undefined, { shallow: true })
+    
+    // Trigger search callback
+    onSearch?.(debouncedSearchValue)
+  }, [debouncedSearchValue, router, isInitialized, onSearch])
+  
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value
     setSearchValue(value)
-    
-    // Debounce URL update to prevent excessive URL changes while typing
-    const timeoutId = setTimeout(() => {
-      // Update URL
-      const query = { ...router.query }
-      if (value) {
-        query.search = value
-      } else {
-        delete query.search
-      }
-      
-      router.push({
-        pathname: router.pathname,
-        query
-      }, undefined, { shallow: true })
-      
-      onSearch?.(value)
-    }, 300)
-    
-    return () => clearTimeout(timeoutId)
   }
   
   const handleSortChange = (value: string) => {
