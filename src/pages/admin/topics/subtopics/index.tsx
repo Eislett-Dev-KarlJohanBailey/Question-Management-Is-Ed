@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Edit, Eye, MoreHorizontal, Trash, List } from "lucide-react"
+import { Edit, Eye, MoreHorizontal, Trash } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,34 +28,6 @@ import {
 } from "@/components/ui/select"
 
 // Mock data for demonstration
-const MOCK_COURSES = [
-  { 
-    id: "1", 
-    name: "Calculus I",
-    subjectId: "1"
-  },
-  { 
-    id: "2", 
-    name: "Mechanics",
-    subjectId: "2"
-  },
-  { 
-    id: "3", 
-    name: "Shakespeare",
-    subjectId: "3"
-  },
-  { 
-    id: "4", 
-    name: "World War II",
-    subjectId: "4"
-  },
-  { 
-    id: "5", 
-    name: "Data Structures",
-    subjectId: "5"
-  }
-]
-
 const MOCK_TOPICS = [
   { 
     id: "1", 
@@ -94,20 +66,93 @@ const MOCK_TOPICS = [
   }
 ]
 
-// Topic form type
-interface TopicFormData {
+const MOCK_SUBTOPICS = [
+  { 
+    id: "1", 
+    name: "Epsilon-Delta Definition", 
+    description: "Formal definition of limits using epsilon-delta notation",
+    topicId: "1",
+    createdAt: "2025-01-16"
+  },
+  { 
+    id: "2", 
+    name: "Limit Laws", 
+    description: "Properties and rules for calculating limits",
+    topicId: "1",
+    createdAt: "2025-01-17"
+  },
+  { 
+    id: "3", 
+    name: "First Law of Motion", 
+    description: "An object at rest stays at rest, and an object in motion stays in motion",
+    topicId: "2",
+    createdAt: "2025-02-11"
+  },
+  { 
+    id: "4", 
+    name: "Second Law of Motion", 
+    description: "Force equals mass times acceleration (F = ma)",
+    topicId: "2",
+    createdAt: "2025-02-12"
+  },
+  { 
+    id: "5", 
+    name: "Character Analysis", 
+    description: "In-depth study of Hamlet's character and motivations",
+    topicId: "3",
+    createdAt: "2025-03-06"
+  },
+  { 
+    id: "6", 
+    name: "Themes and Motifs", 
+    description: "Recurring themes and literary devices in Hamlet",
+    topicId: "3",
+    createdAt: "2025-03-07"
+  },
+  { 
+    id: "7", 
+    name: "Planning and Preparation", 
+    description: "Allied planning and preparation for the D-Day invasion",
+    topicId: "4",
+    createdAt: "2025-01-21"
+  },
+  { 
+    id: "8", 
+    name: "Execution and Aftermath", 
+    description: "The execution of the D-Day invasion and its aftermath",
+    topicId: "4",
+    createdAt: "2025-01-22"
+  },
+  { 
+    id: "9", 
+    name: "Tree Traversal", 
+    description: "Methods for visiting all nodes in a binary tree",
+    topicId: "5",
+    createdAt: "2025-02-26"
+  },
+  { 
+    id: "10", 
+    name: "Balanced Trees", 
+    description: "Techniques for maintaining balanced binary trees",
+    topicId: "5",
+    createdAt: "2025-02-27"
+  }
+]
+
+// Subtopic form type
+interface SubtopicFormData {
   id?: string
   name: string
   description: string
-  courseId: string
+  topicId: string
   createdAt?: string
 }
 
-export default function TopicsPage() {
+export default function SubtopicsPage() {
   const router = useRouter()
+  const [subtopics, setSubtopics] = useState(MOCK_SUBTOPICS)
+  const [filteredSubtopics, setFilteredSubtopics] = useState(MOCK_SUBTOPICS)
   const [topics, setTopics] = useState(MOCK_TOPICS)
-  const [filteredTopics, setFilteredTopics] = useState(MOCK_TOPICS)
-  const [courses, setCourses] = useState(MOCK_COURSES)
   const [isLoading, setIsLoading] = useState(false)
   
   // URL-synced state
@@ -115,22 +160,22 @@ export default function TopicsPage() {
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
   const [currentPage, setCurrentPage] = useState(1)
   const [searchQuery, setSearchQuery] = useState("")
-  const [courseFilter, setCourseFilter] = useState<string>("")
+  const [topicFilter, setTopicFilter] = useState<string>("")
   
   // Form drawer state
   const [formDrawerOpen, setFormDrawerOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [currentTopic, setCurrentTopic] = useState<TopicFormData>({
+  const [currentSubtopic, setCurrentSubtopic] = useState<SubtopicFormData>({
     name: "",
     description: "",
-    courseId: ""
+    topicId: ""
   })
   const [isEditMode, setIsEditMode] = useState(false)
   
   // Delete dialog state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
-  const [topicToDelete, setTopicToDelete] = useState<string | null>(null)
+  const [subtopicToDelete, setSubtopicToDelete] = useState<string | null>(null)
   
   // Initialize state from URL on first load
   useEffect(() => {
@@ -160,10 +205,10 @@ export default function TopicsPage() {
       setSearchQuery(searchFromUrl)
     }
     
-    // Get course filter from URL
-    const courseFilterFromUrl = router.query.course as string
-    if (courseFilterFromUrl) {
-      setCourseFilter(courseFilterFromUrl)
+    // Get topic filter from URL
+    const topicFilterFromUrl = router.query.topic as string
+    if (topicFilterFromUrl) {
+      setTopicFilter(topicFilterFromUrl)
     }
     
     // Apply filters based on URL params
@@ -174,21 +219,21 @@ export default function TopicsPage() {
   const applyFilters = () => {
     setIsLoading(true)
     
-    // Start with all topics
-    let result = [...topics]
+    // Start with all subtopics
+    let result = [...subtopics]
     
     // Apply search filter if present
     if (searchQuery) {
       const lowerSearch = searchQuery.toLowerCase()
-      result = result.filter(topic => 
-        topic.name.toLowerCase().includes(lowerSearch) || 
-        topic.description.toLowerCase().includes(lowerSearch)
+      result = result.filter(subtopic => 
+        subtopic.name.toLowerCase().includes(lowerSearch) || 
+        subtopic.description.toLowerCase().includes(lowerSearch)
       )
     }
     
-    // Apply course filter if present
-    if (courseFilter) {
-      result = result.filter(topic => topic.courseId === courseFilter)
+    // Apply topic filter if present
+    if (topicFilter) {
+      result = result.filter(subtopic => subtopic.topicId === topicFilter)
     }
     
     // Apply sorting
@@ -199,10 +244,10 @@ export default function TopicsPage() {
         comparison = a.id.localeCompare(b.id)
       } else if (sortColumn === "name") {
         comparison = a.name.localeCompare(b.name)
-      } else if (sortColumn === "course") {
-        const courseA = courses.find(c => c.id === a.courseId)?.name || ""
-        const courseB = courses.find(c => c.id === b.courseId)?.name || ""
-        comparison = courseA.localeCompare(courseB)
+      } else if (sortColumn === "topic") {
+        const topicA = topics.find(t => t.id === a.topicId)?.name || ""
+        const topicB = topics.find(t => t.id === b.topicId)?.name || ""
+        comparison = topicA.localeCompare(topicB)
       } else if (sortColumn === "createdAt") {
         comparison = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
       }
@@ -210,44 +255,44 @@ export default function TopicsPage() {
       return sortDirection === "asc" ? comparison : -comparison
     })
     
-    setFilteredTopics(result)
+    setFilteredSubtopics(result)
     setIsLoading(false)
   }
   
   // Apply filters whenever dependencies change
   useEffect(() => {
     applyFilters()
-  }, [topics, searchQuery, courseFilter, sortColumn, sortDirection])
+  }, [subtopics, searchQuery, topicFilter, sortColumn, sortDirection])
   
   // Handle form input changes
-  const handleFormChange = (field: keyof TopicFormData, value: string) => {
-    setCurrentTopic(prev => ({
+  const handleFormChange = (field: keyof SubtopicFormData, value: string) => {
+    setCurrentSubtopic(prev => ({
       ...prev,
       [field]: value
     }))
   }
   
-  // Open form drawer for creating a new topic
+  // Open form drawer for creating a new subtopic
   const handleAddNew = () => {
-    setCurrentTopic({
+    setCurrentSubtopic({
       name: "",
       description: "",
-      courseId: ""
+      topicId: router.query.topic as string || ""
     })
     setIsEditMode(false)
     setFormDrawerOpen(true)
   }
   
-  // Open form drawer for editing a topic
+  // Open form drawer for editing a subtopic
   const handleEdit = (id: string) => {
-    const topicToEdit = topics.find(topic => topic.id === id)
-    if (topicToEdit) {
-      setCurrentTopic({
-        id: topicToEdit.id,
-        name: topicToEdit.name,
-        description: topicToEdit.description,
-        courseId: topicToEdit.courseId,
-        createdAt: topicToEdit.createdAt
+    const subtopicToEdit = subtopics.find(subtopic => subtopic.id === id)
+    if (subtopicToEdit) {
+      setCurrentSubtopic({
+        id: subtopicToEdit.id,
+        name: subtopicToEdit.name,
+        description: subtopicToEdit.description,
+        topicId: subtopicToEdit.topicId,
+        createdAt: subtopicToEdit.createdAt
       })
       setIsEditMode(true)
       setFormDrawerOpen(true)
@@ -259,7 +304,7 @@ export default function TopicsPage() {
     setIsSubmitting(true)
     
     // Validate form
-    if (!currentTopic.name || !currentTopic.courseId) {
+    if (!currentSubtopic.name || !currentSubtopic.topicId) {
       // In a real app, you would show validation errors
       setIsSubmitting(false)
       return
@@ -267,30 +312,30 @@ export default function TopicsPage() {
     
     // Simulate API call
     setTimeout(() => {
-      if (isEditMode && currentTopic.id) {
-        // Update existing topic
-        setTopics(prev => 
-          prev.map(topic => 
-            topic.id === currentTopic.id 
+      if (isEditMode && currentSubtopic.id) {
+        // Update existing subtopic
+        setSubtopics(prev => 
+          prev.map(subtopic => 
+            subtopic.id === currentSubtopic.id 
               ? { 
-                  ...topic, 
-                  name: currentTopic.name,
-                  description: currentTopic.description,
-                  courseId: currentTopic.courseId
+                  ...subtopic, 
+                  name: currentSubtopic.name,
+                  description: currentSubtopic.description,
+                  topicId: currentSubtopic.topicId
                 } 
-              : topic
+              : subtopic
           )
         )
       } else {
-        // Create new topic
-        const newTopic = {
-          id: `${topics.length + 1}`,
-          name: currentTopic.name,
-          description: currentTopic.description,
-          courseId: currentTopic.courseId,
+        // Create new subtopic
+        const newSubtopic = {
+          id: `${subtopics.length + 1}`,
+          name: currentSubtopic.name,
+          description: currentSubtopic.description,
+          topicId: currentSubtopic.topicId,
           createdAt: new Date().toISOString().split("T")[0]
         }
-        setTopics(prev => [...prev, newTopic])
+        setSubtopics(prev => [...prev, newSubtopic])
       }
       
       setIsSubmitting(false)
@@ -300,33 +345,28 @@ export default function TopicsPage() {
   
   // Open delete confirmation dialog
   const handleDeleteClick = (id: string) => {
-    setTopicToDelete(id)
+    setSubtopicToDelete(id)
     setDeleteDialogOpen(true)
   }
   
   // Handle delete confirmation
   const handleDeleteConfirm = () => {
-    if (!topicToDelete) return
+    if (!subtopicToDelete) return
     
     setIsDeleting(true)
     
     // Simulate API call
     setTimeout(() => {
-      setTopics(topics.filter(topic => topic.id !== topicToDelete))
+      setSubtopics(subtopics.filter(subtopic => subtopic.id !== subtopicToDelete))
       setIsDeleting(false)
       setDeleteDialogOpen(false)
-      setTopicToDelete(null)
+      setSubtopicToDelete(null)
     }, 1000)
   }
   
-  // Simulate viewing a topic
-  const handleViewTopic = (id: string) => {
-    router.push(`/admin/topics/${id}`)
-  }
-  
-  // Navigate to subtopics management for a specific topic
-  const handleManageSubtopics = (id: string) => {
-    router.push(`/admin/topics/subtopics?topic=${id}`)
+  // Simulate viewing a subtopic
+  const handleViewSubtopic = (id: string) => {
+    router.push(`/admin/topics/subtopics/${id}`)
   }
   
   // Handle search
@@ -335,14 +375,14 @@ export default function TopicsPage() {
     setCurrentPage(1)
   }
   
-  // Handle course filter change
-  const handleCourseFilterChange = (value: string) => {
-    setCourseFilter(value)
+  // Handle topic filter change
+  const handleTopicFilterChange = (value: string) => {
+    setTopicFilter(value)
     setCurrentPage(1)
     
     // Update URL
-    const query = { ...router.query, course: value || null, page: "1" }
-    if (!value) delete query.course
+    const query = { ...router.query, topic: value || null, page: "1" }
+    if (!value) delete query.topic
     
     router.push({
       pathname: router.pathname,
@@ -397,28 +437,28 @@ export default function TopicsPage() {
     const startIndex = (currentPage - 1) * itemsPerPage
     const endIndex = startIndex + itemsPerPage
     
-    return filteredTopics.slice(startIndex, endIndex)
+    return filteredSubtopics.slice(startIndex, endIndex)
   }
   
-  // Get course name by ID
-  const getCourseName = (courseId: string) => {
-    return courses.find(course => course.id === courseId)?.name || "Unknown"
+  // Get topic name by ID
+  const getTopicName = (topicId: string) => {
+    return topics.find(topic => topic.id === topicId)?.name || "Unknown"
   }
   
   // Filter options
   const filterOptions = [
     {
-      id: "course",
-      label: "Course",
+      id: "topic",
+      label: "Topic",
       type: "select" as const,
-      value: courseFilter,
-      onChange: handleCourseFilterChange,
-      placeholder: "Select course",
+      value: topicFilter,
+      onChange: handleTopicFilterChange,
+      placeholder: "Select topic",
       options: [
-        { label: "All Courses", value: "" },
-        ...courses.map(course => ({
-          label: course.name,
-          value: course.id
+        { label: "All Topics", value: "" },
+        ...topics.map(topic => ({
+          label: topic.name,
+          value: topic.id
         }))
       ]
     }
@@ -429,39 +469,39 @@ export default function TopicsPage() {
     {
       id: "id",
       header: "ID",
-      cell: (topic: typeof MOCK_TOPICS[0]) => <span className="text-muted-foreground text-sm">{topic.id}</span>,
+      cell: (subtopic: typeof MOCK_SUBTOPICS[0]) => <span className="text-muted-foreground text-sm">{subtopic.id}</span>,
       sortable: true
     },
     {
       id: "name",
-      header: "Topic Name",
-      cell: (topic: typeof MOCK_TOPICS[0]) => <span className="font-medium">{topic.name}</span>,
+      header: "Subtopic Name",
+      cell: (subtopic: typeof MOCK_SUBTOPICS[0]) => <span className="font-medium">{subtopic.name}</span>,
       sortable: true
     },
     {
-      id: "course",
-      header: "Course",
-      cell: (topic: typeof MOCK_TOPICS[0]) => <span>{getCourseName(topic.courseId)}</span>,
+      id: "topic",
+      header: "Topic",
+      cell: (subtopic: typeof MOCK_SUBTOPICS[0]) => <span>{getTopicName(subtopic.topicId)}</span>,
       sortable: true
     },
     {
       id: "description",
       header: "Description",
-      cell: (topic: typeof MOCK_TOPICS[0]) => (
-        <span className="truncate block max-w-[300px]">{topic.description}</span>
+      cell: (subtopic: typeof MOCK_SUBTOPICS[0]) => (
+        <span className="truncate block max-w-[300px]">{subtopic.description}</span>
       ),
       sortable: false
     },
     {
       id: "createdAt",
       header: "Created At",
-      cell: (topic: typeof MOCK_TOPICS[0]) => new Date(topic.createdAt).toLocaleDateString(),
+      cell: (subtopic: typeof MOCK_SUBTOPICS[0]) => new Date(subtopic.createdAt).toLocaleDateString(),
       sortable: true
     },
     {
       id: "actions",
       header: "",
-      cell: (topic: typeof MOCK_TOPICS[0]) => (
+      cell: (subtopic: typeof MOCK_SUBTOPICS[0]) => (
         <div className="flex justify-end">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -472,21 +512,17 @@ export default function TopicsPage() {
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>Actions</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => handleViewTopic(topic.id)}>
+              <DropdownMenuItem onClick={() => handleViewSubtopic(subtopic.id)}>
                 <Eye className="mr-2 h-4 w-4" />
                 View
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleEdit(topic.id)}>
+              <DropdownMenuItem onClick={() => handleEdit(subtopic.id)}>
                 <Edit className="mr-2 h-4 w-4" />
                 Edit
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleManageSubtopics(topic.id)}>
-                <List className="mr-2 h-4 w-4" />
-                Manage Subtopics
-              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem 
-                onClick={() => handleDeleteClick(topic.id)}
+                onClick={() => handleDeleteClick(subtopic.id)}
                 className="text-destructive focus:text-destructive"
               >
                 <Trash className="mr-2 h-4 w-4" />
@@ -503,8 +539,8 @@ export default function TopicsPage() {
   const sortOptions = [
     { label: "Name (A-Z)", value: "name_asc" },
     { label: "Name (Z-A)", value: "name_desc" },
-    { label: "Course (A-Z)", value: "course_asc" },
-    { label: "Course (Z-A)", value: "course_desc" },
+    { label: "Topic (A-Z)", value: "topic_asc" },
+    { label: "Topic (Z-A)", value: "topic_desc" },
     { label: "ID (Ascending)", value: "id_asc" },
     { label: "ID (Descending)", value: "id_desc" },
     { label: "Newest First", value: "createdAt_desc" },
@@ -525,11 +561,11 @@ export default function TopicsPage() {
   return (
     <AdminLayout>
       <DataManagementLayout
-        title="Topics"
-        description="Manage all topics in the system"
+        title="Subtopics"
+        description="Manage all subtopics in the system"
         onAddNew={handleAddNew}
-        addNewLabel="Add Topic"
-        searchPlaceholder="Search topics..."
+        addNewLabel="Add Subtopic"
+        searchPlaceholder="Search subtopics..."
         onSearch={handleSearch}
         sortOptions={sortOptions}
         onSortChange={handleSortChange}
@@ -563,58 +599,48 @@ export default function TopicsPage() {
         onRefresh={handleRefresh}
         className="px-2 sm:px-4"
         defaultSort={getCurrentSortValue()}
-        defaultShowFilters={!!courseFilter}
-        secondaryActions={
-          <Button 
-            variant="outline" 
-            onClick={() => router.push("/admin/topics/subtopics")}
-            className="ml-2"
-          >
-            <List className="mr-2 h-4 w-4" />
-            All Subtopics
-          </Button>
-        }
+        defaultShowFilters={!!topicFilter}
       >
         <DataTable
           data={getPaginatedData()}
           columns={columns}
           keyExtractor={(item) => item.id}
-          onRowClick={(item) => handleViewTopic(item.id)}
+          onRowClick={(item) => handleViewSubtopic(item.id)}
           sortColumn={sortColumn}
           sortDirection={sortDirection}
           onSort={handleSort}
           pagination={{
             currentPage,
-            totalPages: Math.max(1, Math.ceil(filteredTopics.length / 10)),
+            totalPages: Math.max(1, Math.ceil(filteredSubtopics.length / 10)),
             onPageChange: handlePageChange
           }}
           emptyState={
             <div className="flex flex-col items-center justify-center py-8">
-              <p className="text-muted-foreground mb-4">No topics found</p>
-              <Button onClick={handleAddNew}>Add your first topic</Button>
+              <p className="text-muted-foreground mb-4">No subtopics found</p>
+              <Button onClick={handleAddNew}>Add your first subtopic</Button>
             </div>
           }
         />
       </DataManagementLayout>
       
-      {/* Topic Form Drawer */}
+      {/* Subtopic Form Drawer */}
       <DataFormDrawer
-        title={isEditMode ? "Edit Topic" : "Add New Topic"}
-        description={isEditMode ? "Update topic details" : "Create a new topic"}
+        title={isEditMode ? "Edit Subtopic" : "Add New Subtopic"}
+        description={isEditMode ? "Update subtopic details" : "Create a new subtopic"}
         open={formDrawerOpen}
         onOpenChange={setFormDrawerOpen}
         onSubmit={handleFormSubmit}
         isSubmitting={isSubmitting}
-        submitLabel={isEditMode ? "Save Changes" : "Create Topic"}
+        submitLabel={isEditMode ? "Save Changes" : "Create Subtopic"}
         size="md"
       >
         <div className="space-y-6">
-          {isEditMode && currentTopic.id && (
+          {isEditMode && currentSubtopic.id && (
             <div className="space-y-2">
               <Label htmlFor="id">ID</Label>
               <Input
                 id="id"
-                value={currentTopic.id}
+                value={currentSubtopic.id}
                 readOnly
                 disabled
                 className="bg-muted"
@@ -623,28 +649,28 @@ export default function TopicsPage() {
           )}
           
           <div className="space-y-2">
-            <Label htmlFor="name">Topic Name</Label>
+            <Label htmlFor="name">Subtopic Name</Label>
             <Input
               id="name"
-              value={currentTopic.name}
+              value={currentSubtopic.name}
               onChange={(e) => handleFormChange("name", e.target.value)}
-              placeholder="Enter topic name"
+              placeholder="Enter subtopic name"
             />
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="course">Course</Label>
+            <Label htmlFor="topic">Topic</Label>
             <Select 
-              value={currentTopic.courseId} 
-              onValueChange={(value) => handleFormChange("courseId", value)}
+              value={currentSubtopic.topicId} 
+              onValueChange={(value) => handleFormChange("topicId", value)}
             >
-              <SelectTrigger id="course">
-                <SelectValue placeholder="Select course" />
+              <SelectTrigger id="topic">
+                <SelectValue placeholder="Select topic" />
               </SelectTrigger>
               <SelectContent>
-                {courses.map((course) => (
-                  <SelectItem key={course.id} value={course.id}>
-                    {course.name}
+                {topics.map((topic) => (
+                  <SelectItem key={topic.id} value={topic.id}>
+                    {topic.name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -655,19 +681,19 @@ export default function TopicsPage() {
             <Label htmlFor="description">Description</Label>
             <Textarea
               id="description"
-              value={currentTopic.description}
+              value={currentSubtopic.description}
               onChange={(e) => handleFormChange("description", e.target.value)}
-              placeholder="Enter topic description"
+              placeholder="Enter subtopic description"
               rows={4}
             />
           </div>
           
-          {isEditMode && currentTopic.createdAt && (
+          {isEditMode && currentSubtopic.createdAt && (
             <div className="space-y-2">
               <Label htmlFor="createdAt">Created At</Label>
               <Input
                 id="createdAt"
-                value={new Date(currentTopic.createdAt).toLocaleDateString()}
+                value={new Date(currentSubtopic.createdAt).toLocaleDateString()}
                 readOnly
                 disabled
                 className="bg-muted"
@@ -683,8 +709,8 @@ export default function TopicsPage() {
         onOpenChange={setDeleteDialogOpen}
         onConfirm={handleDeleteConfirm}
         isDeleting={isDeleting}
-        title="Delete Topic"
-        description="Are you sure you want to delete this topic? This action cannot be undone and will remove all associated content."
+        title="Delete Subtopic"
+        description="Are you sure you want to delete this subtopic? This action cannot be undone."
       />
     </AdminLayout>
   )
