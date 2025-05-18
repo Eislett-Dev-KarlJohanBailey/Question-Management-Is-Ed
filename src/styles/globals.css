@@ -1,9 +1,9 @@
 
+@import "./reduce-motion.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-@import "./reduce-motion.css";
 
 @layer base {
   :root {
