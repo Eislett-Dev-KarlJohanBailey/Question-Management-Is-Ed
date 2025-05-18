@@ -7,18 +7,9 @@ import { FilterControls } from "@/components/data/FilterControls"
 import { DataFormDrawer } from "@/components/data/DataFormDrawer"
 import { DeleteConfirmationDialog } from "@/components/data/DeleteConfirmationDialog"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from "@/components/ui/select"
-import { Switch } from "@/components/ui/switch"
 import { Edit, Eye, MoreHorizontal, Trash } from "lucide-react"
 import {
   DropdownMenu,
@@ -36,45 +27,30 @@ const MOCK_SUBJECTS = [
     id: "1", 
     name: "Mathematics", 
     description: "Study of numbers, quantities, and shapes",
-    category: "Science",
-    status: "active",
-    topics: 24,
     createdAt: "2025-01-15"
   },
   { 
     id: "2", 
     name: "Physics", 
     description: "Study of matter, energy, and the interaction between them",
-    category: "Science",
-    status: "active",
-    topics: 18,
     createdAt: "2025-02-10"
   },
   { 
     id: "3", 
     name: "Literature", 
     description: "Study of written works, especially those considered of superior or lasting artistic merit",
-    category: "Humanities",
-    status: "inactive",
-    topics: 12,
     createdAt: "2025-03-05"
   },
   { 
     id: "4", 
     name: "History", 
     description: "Study of past events, particularly in human affairs",
-    category: "Humanities",
-    status: "active",
-    topics: 30,
     createdAt: "2025-01-20"
   },
   { 
     id: "5", 
     name: "Computer Science", 
     description: "Study of computers and computational systems",
-    category: "Technology",
-    status: "active",
-    topics: 22,
     createdAt: "2025-02-25"
   }
 ]
@@ -84,8 +60,7 @@ interface SubjectFormData {
   id?: string
   name: string
   description: string
-  category: string
-  status: string
+  createdAt?: string
 }
 
 export default function SubjectsPage() {
@@ -96,8 +71,6 @@ export default function SubjectsPage() {
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
   const [currentPage, setCurrentPage] = useState(1)
   const [filters, setFilters] = useState({
-    category: "",
-    status: [],
     search: ""
   })
   
@@ -106,9 +79,7 @@ export default function SubjectsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [currentSubject, setCurrentSubject] = useState<SubjectFormData>({
     name: "",
-    description: "",
-    category: "",
-    status: "active"
+    description: ""
   })
   const [isEditMode, setIsEditMode] = useState(false)
   
@@ -129,9 +100,7 @@ export default function SubjectsPage() {
   const handleAddNew = () => {
     setCurrentSubject({
       name: "",
-      description: "",
-      category: "",
-      status: "active"
+      description: ""
     })
     setIsEditMode(false)
     setFormDrawerOpen(true)
@@ -145,8 +114,7 @@ export default function SubjectsPage() {
         id: subjectToEdit.id,
         name: subjectToEdit.name,
         description: subjectToEdit.description,
-        category: subjectToEdit.category,
-        status: subjectToEdit.status
+        createdAt: subjectToEdit.createdAt
       })
       setIsEditMode(true)
       setFormDrawerOpen(true)
@@ -167,9 +135,7 @@ export default function SubjectsPage() {
               ? { 
                   ...subject, 
                   name: currentSubject.name,
-                  description: currentSubject.description,
-                  category: currentSubject.category,
-                  status: currentSubject.status
+                  description: currentSubject.description
                 } 
               : subject
           )
@@ -180,9 +146,6 @@ export default function SubjectsPage() {
           id: `${subjects.length + 1}`,
           name: currentSubject.name,
           description: currentSubject.description,
-          category: currentSubject.category,
-          status: currentSubject.status,
-          topics: 0,
           createdAt: new Date().toISOString().split("T")[0]
         }
         setSubjects(prev => [...prev, newSubject])
@@ -231,30 +194,6 @@ export default function SubjectsPage() {
     setSortDirection(direction)
   }
   
-  // Simulate filtering
-  const handleFilterChange = (key: string, value: any) => {
-    setFilters({...filters, [key]: value})
-    setCurrentPage(1)
-  }
-  
-  // Simulate applying filters
-  const handleApplyFilters = () => {
-    // In a real app, you would fetch filtered data from the API
-    setIsLoading(true)
-    setTimeout(() => {
-      setIsLoading(false)
-    }, 500)
-  }
-  
-  // Simulate resetting filters
-  const handleResetFilters = () => {
-    setFilters({
-      category: "",
-      status: [],
-      search: ""
-    })
-  }
-  
   // Simulate refreshing data
   const handleRefresh = () => {
     setIsLoading(true)
@@ -267,36 +206,28 @@ export default function SubjectsPage() {
   // Table columns configuration
   const columns = [
     {
+      id: "id",
+      header: "ID",
+      cell: (subject: typeof MOCK_SUBJECTS[0]) => <span className="text-muted-foreground text-sm">{subject.id}</span>,
+      sortable: true
+    },
+    {
       id: "name",
       header: "Subject Name",
       cell: (subject: typeof MOCK_SUBJECTS[0]) => <span className="font-medium">{subject.name}</span>,
       sortable: true
     },
     {
-      id: "category",
-      header: "Category",
-      cell: (subject: typeof MOCK_SUBJECTS[0]) => subject.category,
-      sortable: true
-    },
-    {
-      id: "status",
-      header: "Status",
+      id: "description",
+      header: "Description",
       cell: (subject: typeof MOCK_SUBJECTS[0]) => (
-        <Badge variant={subject.status === "active" ? "default" : "secondary"}>
-          {subject.status === "active" ? "Active" : "Inactive"}
-        </Badge>
+        <span className="truncate block max-w-[300px]">{subject.description}</span>
       ),
-      sortable: true
-    },
-    {
-      id: "topics",
-      header: "Topics",
-      cell: (subject: typeof MOCK_SUBJECTS[0]) => subject.topics,
-      sortable: true
+      sortable: false
     },
     {
       id: "createdAt",
-      header: "Created",
+      header: "Created At",
       cell: (subject: typeof MOCK_SUBJECTS[0]) => new Date(subject.createdAt).toLocaleDateString(),
       sortable: true
     },
@@ -337,40 +268,12 @@ export default function SubjectsPage() {
     }
   ]
   
-  // Filter options
-  const filterOptions = [
-    {
-      id: "category",
-      label: "Category",
-      type: "select" as const,
-      options: [
-        { label: "All Categories", value: "" },
-        { label: "Science", value: "Science" },
-        { label: "Humanities", value: "Humanities" },
-        { label: "Technology", value: "Technology" }
-      ],
-      value: filters.category,
-      onChange: (value: string) => handleFilterChange("category", value)
-    },
-    {
-      id: "status",
-      label: "Status",
-      type: "checkbox" as const,
-      options: [
-        { label: "Active", value: "active" },
-        { label: "Inactive", value: "inactive" }
-      ],
-      value: filters.status,
-      onChange: (value: string[]) => handleFilterChange("status", value)
-    }
-  ]
-  
   // Sort options
   const sortOptions = [
     { label: "Name (A-Z)", value: "name_asc" },
     { label: "Name (Z-A)", value: "name_desc" },
-    { label: "Category (A-Z)", value: "category_asc" },
-    { label: "Category (Z-A)", value: "category_desc" },
+    { label: "ID (Ascending)", value: "id_asc" },
+    { label: "ID (Descending)", value: "id_desc" },
     { label: "Newest First", value: "createdAt_desc" },
     { label: "Oldest First", value: "createdAt_asc" }
   ]
@@ -390,13 +293,6 @@ export default function SubjectsPage() {
         addNewLabel="Add Subject"
         searchPlaceholder="Search subjects..."
         onSearch={handleSearch}
-        filterControls={
-          <FilterControls
-            filters={filterOptions}
-            onApply={handleApplyFilters}
-            onReset={handleResetFilters}
-          />
-        }
         sortOptions={sortOptions}
         onSortChange={handleSortChange}
         isLoading={isLoading}
@@ -437,6 +333,19 @@ export default function SubjectsPage() {
         size="md"
       >
         <div className="space-y-6">
+          {isEditMode && currentSubject.id && (
+            <div className="space-y-2">
+              <Label htmlFor="id">ID</Label>
+              <Input
+                id="id"
+                value={currentSubject.id}
+                readOnly
+                disabled
+                className="bg-muted"
+              />
+            </div>
+          )}
+          
           <div className="space-y-2">
             <Label htmlFor="name">Subject Name</Label>
             <Input
@@ -458,40 +367,18 @@ export default function SubjectsPage() {
             />
           </div>
           
-          <div className="space-y-2">
-            <Label htmlFor="category">Category</Label>
-            <Select
-              value={currentSubject.category}
-              onValueChange={(value) => handleFormChange("category", value)}
-            >
-              <SelectTrigger id="category">
-                <SelectValue placeholder="Select a category" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Science">Science</SelectItem>
-                <SelectItem value="Humanities">Humanities</SelectItem>
-                <SelectItem value="Technology">Technology</SelectItem>
-                <SelectItem value="Arts">Arts</SelectItem>
-                <SelectItem value="Business">Business</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="status">Status</Label>
-            <div className="flex items-center space-x-2">
-              <Switch
-                id="status"
-                checked={currentSubject.status === "active"}
-                onCheckedChange={(checked) => 
-                  handleFormChange("status", checked ? "active" : "inactive")
-                }
+          {isEditMode && currentSubject.createdAt && (
+            <div className="space-y-2">
+              <Label htmlFor="createdAt">Created At</Label>
+              <Input
+                id="createdAt"
+                value={new Date(currentSubject.createdAt).toLocaleDateString()}
+                readOnly
+                disabled
+                className="bg-muted"
               />
-              <Label htmlFor="status" className="text-sm font-normal">
-                {currentSubject.status === "active" ? "Active" : "Inactive"}
-              </Label>
             </div>
-          </div>
+          )}
         </div>
       </DataFormDrawer>
       
@@ -502,7 +389,7 @@ export default function SubjectsPage() {
         onConfirm={handleDeleteConfirm}
         isDeleting={isDeleting}
         title="Delete Subject"
-        description="Are you sure you want to delete this subject? This action cannot be undone and will remove all associated topics and content."
+        description="Are you sure you want to delete this subject? This action cannot be undone and will remove all associated content."
       />
     </AdminLayout>
   )
