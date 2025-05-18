@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback } from "react"
+import React, { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { PlusCircle, RefreshCw, Search, SlidersHorizontal, X } from "lucide-react"
@@ -130,7 +130,14 @@ export function DataManagementLayout({
       setIsSheetOpen(newShowFilters)
     }
     
-    router.push({ pathname: router.pathname, query: { ...router.query, showFilters: newShowFilters.toString() } }, undefined, { shallow: true })
+    const currentQuery = { ...router.query }
+    if (newShowFilters) {
+      currentQuery.showFilters = "true"
+    } else {
+      delete currentQuery.showFilters
+    }
+    
+    router.push({ pathname: router.pathname, query: currentQuery }, undefined, { shallow: true })
   }
   
   const handleSheetOpenChange = (open: boolean) => {
@@ -139,11 +146,22 @@ export function DataManagementLayout({
     // Only update showFilters and URL if the sheet state actually changed
     if (showFilters !== open) {
       setShowFilters(open)
-      router.push({ pathname: router.pathname, query: { ...router.query, showFilters: open.toString() } }, undefined, { shallow: true })
+      
+      const currentQuery = { ...router.query }
+      if (open) {
+        currentQuery.showFilters = "true"
+      } else {
+        delete currentQuery.showFilters
+      }
+      
+      router.push({ pathname: router.pathname, query: currentQuery }, undefined, { shallow: true })
     }
   }
-  
-  const FilterControlsWrapper = ({ children }: { children: React.ReactNode }) => {
+
+  // Render the filter controls based on device type
+  const renderFilterControls = () => {
+    if (!filterControls) return null;
+    
     if (isMobile) {
       return (
         <Sheet open={isSheetOpen} onOpenChange={handleSheetOpenChange}>
@@ -158,20 +176,28 @@ export function DataManagementLayout({
               <SheetTitle>Filters</SheetTitle>
             </SheetHeader>
             <div className="py-4 space-y-4">
-              {children}
+              {filterControls}
             </div>
           </SheetContent>
         </Sheet>
       )
     }
+    
     return (
-      <Button variant="outline" onClick={toggleFilters} className="ml-2">
-        <SlidersHorizontal className="mr-2 h-4 w-4" />
-        {showFilters ? "Hide Filters" : "Show Filters"}
-      </Button>
+      <>
+        <Button variant="outline" onClick={toggleFilters} className="ml-2">
+          <SlidersHorizontal className="mr-2 h-4 w-4" />
+          {showFilters ? "Hide Filters" : "Show Filters"}
+        </Button>
+        
+        {showFilters && (
+          <div className="w-full mt-4 p-4 border rounded-md bg-card">
+            {filterControls}
+          </div>
+        )}
+      </>
     )
   }
-
 
   return (
     <div className={cn("p-4 sm:p-6 lg:p-8 space-y-6", className)}>
@@ -233,9 +259,31 @@ export function DataManagementLayout({
             )}
 
             {filterControls && (
-              <FilterControlsWrapper>
-                {filterControls}
-              </FilterControlsWrapper>
+              <>
+                {isMobile ? (
+                  <Sheet open={isSheetOpen} onOpenChange={handleSheetOpenChange}>
+                    <SheetTrigger asChild>
+                      <Button variant="outline" className="ml-2">
+                        <SlidersHorizontal className="mr-2 h-4 w-4" />
+                        Filters
+                      </Button>
+                    </SheetTrigger>
+                    <SheetContent className="w-[300px] sm:w-[400px]">
+                      <SheetHeader>
+                        <SheetTitle>Filters</SheetTitle>
+                      </SheetHeader>
+                      <div className="py-4 space-y-4">
+                        {filterControls}
+                      </div>
+                    </SheetContent>
+                  </Sheet>
+                ) : (
+                  <Button variant="outline" onClick={toggleFilters} className="ml-2">
+                    <SlidersHorizontal className="mr-2 h-4 w-4" />
+                    {showFilters ? "Hide Filters" : "Show Filters"}
+                  </Button>
+                )}
+              </>
             )}
 
             {onRefresh && (
@@ -246,20 +294,11 @@ export function DataManagementLayout({
           </div>
         </div>
         
-        {isMobile ? (
-          showFilters && filterControls && !isSheetOpen && (
-            <div className="block md:hidden mt-4 p-4 border rounded-md bg-card">
-              {/* Filters are in Sheet for mobile, this space can be used for other mobile-specific controls or left empty */}
-            </div>
-          )
-        ) : (
-          showFilters && filterControls && (
-            <div className="p-4 border rounded-md bg-card">
-              {filterControls}
-            </div>
-          )
+        {!isMobile && showFilters && filterControls && (
+          <div className="p-4 border rounded-md bg-card">
+            {filterControls}
+          </div>
         )}
-
       </div>
 
       {isLoading && (
