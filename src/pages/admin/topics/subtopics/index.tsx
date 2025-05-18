@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { AdminLayout } from "@/components/layout/AdminLayout"
 import { DataManagementLayout } from "@/components/layout/DataManagementLayout"
 import { DataTable } from "@/components/data/DataTable"
@@ -26,6 +26,24 @@ import {
   SelectTrigger,
   SelectValue
 } from "@/components/ui/select"
+
+// Subtopic data type
+interface Subtopic {
+  id: string
+  name: string
+  description: string
+  topicId: string
+  createdAt: string
+}
+
+// Subtopic form type
+interface SubtopicFormData {
+  id?: string
+  name: string
+  description: string
+  topicId: string
+  createdAt?: string
+}
 
 // Mock data for demonstration
 const MOCK_TOPICS = [
@@ -66,7 +84,7 @@ const MOCK_TOPICS = [
   }
 ]
 
-const MOCK_SUBTOPICS = [
+const MOCK_SUBTOPICS: Subtopic[] = [
   { 
     id: "1", 
     name: "Epsilon-Delta Definition", 
@@ -139,20 +157,12 @@ const MOCK_SUBTOPICS = [
   }
 ]
 
-// Subtopic form type
-interface SubtopicFormData {
-  id?: string
-  name: string
-  description: string
-  topicId: string
-  createdAt?: string
-}
 
 export default function SubtopicsPage() {
   const router = useRouter()
-  const [subtopics, setSubtopics] = useState(MOCK_SUBTOPICS)
-  const [filteredSubtopics, setFilteredSubtopics] = useState(MOCK_SUBTOPICS)
-  const [topics, setTopics] = useState(MOCK_TOPICS)
+  const [subtopics, setSubtopics] = useState<Subtopic[]>(MOCK_SUBTOPICS)
+  const [filteredSubtopics, setFilteredSubtopics] = useState<Subtopic[]>(MOCK_SUBTOPICS)
+  const [topics, setTopics] = useState(MOCK_TOPICS) // This should be Topic[] if you define Topic interface
   const [isLoading, setIsLoading] = useState(false)
   
   // URL-synced state
@@ -177,52 +187,12 @@ export default function SubtopicsPage() {
   const [isDeleting, setIsDeleting] = useState(false)
   const [subtopicToDelete, setSubtopicToDelete] = useState<string | null>(null)
   
-  // Initialize state from URL on first load
-  useEffect(() => {
-    if (!router.isReady) return
-    
-    // Get sort params from URL
-    const sortColumnFromUrl = router.query.sortColumn as string
-    const sortDirectionFromUrl = router.query.sortDirection as "asc" | "desc"
-    
-    if (sortColumnFromUrl) {
-      setSortColumn(sortColumnFromUrl)
-    }
-    
-    if (sortDirectionFromUrl && (sortDirectionFromUrl === "asc" || sortDirectionFromUrl === "desc")) {
-      setSortDirection(sortDirectionFromUrl)
-    }
-    
-    // Get page from URL
-    const pageFromUrl = router.query.page ? parseInt(router.query.page as string, 10) : 1
-    if (pageFromUrl && !isNaN(pageFromUrl)) {
-      setCurrentPage(pageFromUrl)
-    }
-    
-    // Get search from URL
-    const searchFromUrl = router.query.search as string
-    if (searchFromUrl) {
-      setSearchQuery(searchFromUrl)
-    }
-    
-    // Get topic filter from URL
-    const topicFilterFromUrl = router.query.topic as string
-    if (topicFilterFromUrl) {
-      setTopicFilter(topicFilterFromUrl)
-    }
-    
-    // Apply filters based on URL params
-    applyFilters()
-  }, [router.isReady, router.query])
-  
   // Apply all filters, sorting, and pagination
-  const applyFilters = () => {
+  const applyFilters = useCallback(() => {
     setIsLoading(true)
     
-    // Start with all subtopics
     let result = [...subtopics]
     
-    // Apply search filter if present
     if (searchQuery) {
       const lowerSearch = searchQuery.toLowerCase()
       result = result.filter(subtopic => 
@@ -231,48 +201,63 @@ export default function SubtopicsPage() {
       )
     }
     
-    // Apply topic filter if present
     if (topicFilter) {
       result = result.filter(subtopic => subtopic.topicId === topicFilter)
     }
     
-    // Apply sorting
     result.sort((a, b) => {
       let comparison = 0
-      
-      if (sortColumn === "id") {
-        comparison = a.id.localeCompare(b.id)
-      } else if (sortColumn === "name") {
-        comparison = a.name.localeCompare(b.name)
-      } else if (sortColumn === "topic") {
+      const valA = a[sortColumn as keyof Subtopic]
+      const valB = b[sortColumn as keyof Subtopic]
+
+      if (sortColumn === "topic") {
         const topicA = topics.find(t => t.id === a.topicId)?.name || ""
         const topicB = topics.find(t => t.id === b.topicId)?.name || ""
         comparison = topicA.localeCompare(topicB)
+      } else if (typeof valA === "string" && typeof valB === "string") {
+        comparison = valA.localeCompare(valB)
+      } else if (typeof valA === "number" && typeof valB === "number") {
+        comparison = valA - valB
       } else if (sortColumn === "createdAt") {
         comparison = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
       }
-      
       return sortDirection === "asc" ? comparison : -comparison
     })
     
     setFilteredSubtopics(result)
     setIsLoading(false)
-  }
+  }, [subtopics, searchQuery, topicFilter, sortColumn, sortDirection, topics])
+
+  // Initialize state from URL on first load
+  useEffect(() => {
+    if (!router.isReady) return
+    
+    const sortColumnFromUrl = router.query.sortColumn as string
+    const sortDirectionFromUrl = router.query.sortDirection as "asc" | "desc"
+    if (sortColumnFromUrl) setSortColumn(sortColumnFromUrl)
+    if (sortDirectionFromUrl && ["asc", "desc"].includes(sortDirectionFromUrl)) setSortDirection(sortDirectionFromUrl)
+    
+    const pageFromUrl = router.query.page ? parseInt(router.query.page as string, 10) : 1
+    if (!isNaN(pageFromUrl)) setCurrentPage(pageFromUrl)
+    
+    const searchFromUrl = router.query.search as string
+    if (searchFromUrl) setSearchQuery(searchFromUrl)
+    
+    const topicFilterFromUrl = router.query.topic as string
+    if (topicFilterFromUrl) setTopicFilter(topicFilterFromUrl)
+    
+    applyFilters()
+  }, [router.isReady, router.query, applyFilters])
   
   // Apply filters whenever dependencies change
   useEffect(() => {
     applyFilters()
-  }, [subtopics, searchQuery, topicFilter, sortColumn, sortDirection])
+  }, [subtopics, searchQuery, topicFilter, sortColumn, sortDirection, applyFilters])
   
-  // Handle form input changes
   const handleFormChange = (field: keyof SubtopicFormData, value: string) => {
-    setCurrentSubtopic(prev => ({
-      ...prev,
-      [field]: value
-    }))
+    setCurrentSubtopic(prev => ({ ...prev, [field]: value }))
   }
   
-  // Open form drawer for creating a new subtopic
   const handleAddNew = () => {
     setCurrentSubtopic({
       name: "",
@@ -283,79 +268,58 @@ export default function SubtopicsPage() {
     setFormDrawerOpen(true)
   }
   
-  // Open form drawer for editing a subtopic
   const handleEdit = (id: string) => {
     const subtopicToEdit = subtopics.find(subtopic => subtopic.id === id)
     if (subtopicToEdit) {
-      setCurrentSubtopic({
-        id: subtopicToEdit.id,
-        name: subtopicToEdit.name,
-        description: subtopicToEdit.description,
-        topicId: subtopicToEdit.topicId,
-        createdAt: subtopicToEdit.createdAt
-      })
+      setCurrentSubtopic(subtopicToEdit)
       setIsEditMode(true)
       setFormDrawerOpen(true)
     }
   }
   
-  // Handle form submission
   const handleFormSubmit = () => {
     setIsSubmitting(true)
-    
-    // Validate form
     if (!currentSubtopic.name || !currentSubtopic.topicId) {
-      // In a real app, you would show validation errors
       setIsSubmitting(false)
       return
     }
     
-    // Simulate API call
     setTimeout(() => {
       if (isEditMode && currentSubtopic.id) {
-        // Update existing subtopic
-        setSubtopics(prev => 
-          prev.map(subtopic => 
-            subtopic.id === currentSubtopic.id 
-              ? { 
-                  ...subtopic, 
-                  name: currentSubtopic.name,
-                  description: currentSubtopic.description,
-                  topicId: currentSubtopic.topicId
-                } 
-              : subtopic
-          )
-        )
+        const originalSubtopic = subtopics.find(s => s.id === currentSubtopic.id)
+        if (originalSubtopic) {
+          const updatedSubtopic: Subtopic = {
+            id: currentSubtopic.id,
+            name: currentSubtopic.name,
+            description: currentSubtopic.description,
+            topicId: currentSubtopic.topicId,
+            createdAt: originalSubtopic.createdAt
+          }
+          setSubtopics(prev => prev.map(s => (s.id === updatedSubtopic.id ? updatedSubtopic : s)))
+        }
       } else {
-        // Create new subtopic
-        const newSubtopic = {
-          id: `${subtopics.length + 1}`,
+        const newSubtopic: Subtopic = {
           name: currentSubtopic.name,
           description: currentSubtopic.description,
           topicId: currentSubtopic.topicId,
+          id: `${Date.now()}`, // Using timestamp for more unique ID
           createdAt: new Date().toISOString().split("T")[0]
         }
         setSubtopics(prev => [...prev, newSubtopic])
       }
-      
       setIsSubmitting(false)
       setFormDrawerOpen(false)
     }, 1000)
   }
   
-  // Open delete confirmation dialog
   const handleDeleteClick = (id: string) => {
     setSubtopicToDelete(id)
     setDeleteDialogOpen(true)
   }
   
-  // Handle delete confirmation
   const handleDeleteConfirm = () => {
     if (!subtopicToDelete) return
-    
     setIsDeleting(true)
-    
-    // Simulate API call
     setTimeout(() => {
       setSubtopics(subtopics.filter(subtopic => subtopic.id !== subtopicToDelete))
       setIsDeleting(false)
@@ -364,88 +328,50 @@ export default function SubtopicsPage() {
     }, 1000)
   }
   
-  // Simulate viewing a subtopic
   const handleViewSubtopic = (id: string) => {
     router.push(`/admin/topics/subtopics/${id}`)
   }
   
-  // Handle search
   const handleSearch = (value: string) => {
     setSearchQuery(value)
     setCurrentPage(1)
   }
   
-  // Handle topic filter change
   const handleTopicFilterChange = (value: string) => {
     setTopicFilter(value)
     setCurrentPage(1)
-    
-    // Update URL
-    const query = { ...router.query, topic: value || null, page: "1" }
+    const query = { ...router.query, topic: value || undefined, page: "1" }
     if (!value) delete query.topic
-    
-    router.push({
-      pathname: router.pathname,
-      query
-    }, undefined, { shallow: true })
+    router.push({ pathname: router.pathname, query }, undefined, { shallow: true })
   }
   
-  // Handle sorting
   const handleSort = (column: string, direction: "asc" | "desc") => {
     setSortColumn(column)
     setSortDirection(direction)
-    
-    // Update URL
-    const query = { 
-      ...router.query, 
-      sortColumn: column, 
-      sortDirection: direction 
-    }
-    
-    router.push({
-      pathname: router.pathname,
-      query
-    }, undefined, { shallow: true })
+    router.push({ pathname: router.pathname, query: { ...router.query, sortColumn: column, sortDirection: direction } }, undefined, { shallow: true })
   }
   
-  // Handle page change
   const handlePageChange = (page: number) => {
     setCurrentPage(page)
-    
-    // Update URL
-    const query = { ...router.query, page: page.toString() }
-    
-    router.push({
-      pathname: router.pathname,
-      query
-    }, undefined, { shallow: true })
+    router.push({ pathname: router.pathname, query: { ...router.query, page: page.toString() } }, undefined, { shallow: true })
   }
   
-  // Simulate refreshing data
   const handleRefresh = () => {
     setIsLoading(true)
-    // In a real app, you would fetch fresh data from the API
     setTimeout(() => {
       applyFilters()
       setIsLoading(false)
     }, 500)
   }
   
-  // Get paginated data
   const getPaginatedData = () => {
     const itemsPerPage = 10
     const startIndex = (currentPage - 1) * itemsPerPage
-    const endIndex = startIndex + itemsPerPage
-    
-    return filteredSubtopics.slice(startIndex, endIndex)
+    return filteredSubtopics.slice(startIndex, startIndex + itemsPerPage)
   }
   
-  // Get topic name by ID
-  const getTopicName = (topicId: string) => {
-    return topics.find(topic => topic.id === topicId)?.name || "Unknown"
-  }
+  const getTopicName = (topicId: string) => topics.find(topic => topic.id === topicId)?.name || "Unknown"
   
-  // Filter options
   const filterOptions = [
     {
       id: "topic",
@@ -456,52 +382,21 @@ export default function SubtopicsPage() {
       placeholder: "Select topic",
       options: [
         { label: "All Topics", value: "" },
-        ...topics.map(topic => ({
-          label: topic.name,
-          value: topic.id
-        }))
+        ...topics.map(topic => ({ label: topic.name, value: topic.id }))
       ]
     }
   ]
   
-  // Table columns configuration
   const columns = [
-    {
-      id: "id",
-      header: "ID",
-      cell: (subtopic: typeof MOCK_SUBTOPICS[0]) => <span className="text-muted-foreground text-sm">{subtopic.id}</span>,
-      sortable: true
-    },
-    {
-      id: "name",
-      header: "Subtopic Name",
-      cell: (subtopic: typeof MOCK_SUBTOPICS[0]) => <span className="font-medium">{subtopic.name}</span>,
-      sortable: true
-    },
-    {
-      id: "topic",
-      header: "Topic",
-      cell: (subtopic: typeof MOCK_SUBTOPICS[0]) => <span>{getTopicName(subtopic.topicId)}</span>,
-      sortable: true
-    },
-    {
-      id: "description",
-      header: "Description",
-      cell: (subtopic: typeof MOCK_SUBTOPICS[0]) => (
-        <span className="truncate block max-w-[300px]">{subtopic.description}</span>
-      ),
-      sortable: false
-    },
-    {
-      id: "createdAt",
-      header: "Created At",
-      cell: (subtopic: typeof MOCK_SUBTOPICS[0]) => new Date(subtopic.createdAt).toLocaleDateString(),
-      sortable: true
-    },
+    { id: "id", header: "ID", cell: (subtopic: Subtopic) => <span className="text-muted-foreground text-sm">{subtopic.id}</span>, sortable: true },
+    { id: "name", header: "Subtopic Name", cell: (subtopic: Subtopic) => <span className="font-medium">{subtopic.name}</span>, sortable: true },
+    { id: "topic", header: "Topic", cell: (subtopic: Subtopic) => <span>{getTopicName(subtopic.topicId)}</span>, sortable: true },
+    { id: "description", header: "Description", cell: (subtopic: Subtopic) => <span className="truncate block max-w-[300px]">{subtopic.description}</span>, sortable: false },
+    { id: "createdAt", header: "Created At", cell: (subtopic: Subtopic) => new Date(subtopic.createdAt).toLocaleDateString(), sortable: true },
     {
       id: "actions",
       header: "",
-      cell: (subtopic: typeof MOCK_SUBTOPICS[0]) => (
+      cell: (subtopic: Subtopic) => (
         <div className="flex justify-end">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -512,22 +407,10 @@ export default function SubtopicsPage() {
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>Actions</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => handleViewSubtopic(subtopic.id)}>
-                <Eye className="mr-2 h-4 w-4" />
-                View
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleEdit(subtopic.id)}>
-                <Edit className="mr-2 h-4 w-4" />
-                Edit
-              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleViewSubtopic(subtopic.id)}><Eye className="mr-2 h-4 w-4" />View</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleEdit(subtopic.id)}><Edit className="mr-2 h-4 w-4" />Edit</DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem 
-                onClick={() => handleDeleteClick(subtopic.id)}
-                className="text-destructive focus:text-destructive"
-              >
-                <Trash className="mr-2 h-4 w-4" />
-                Delete
-              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleDeleteClick(subtopic.id)} className="text-destructive focus:text-destructive"><Trash className="mr-2 h-4 w-4" />Delete</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -535,7 +418,6 @@ export default function SubtopicsPage() {
     }
   ]
   
-  // Sort options
   const sortOptions = [
     { label: "Name (A-Z)", value: "name_asc" },
     { label: "Name (Z-A)", value: "name_desc" },
@@ -546,17 +428,13 @@ export default function SubtopicsPage() {
     { label: "Newest First", value: "createdAt_desc" },
     { label: "Oldest First", value: "createdAt_asc" }
   ]
-  
-  // Handle sort dropdown change
+
   const handleSortChange = (value: string) => {
     const [column, direction] = value.split("_")
     handleSort(column, direction as "asc" | "desc")
   }
-  
-  // Get current sort value for dropdown
-  const getCurrentSortValue = () => {
-    return `${sortColumn}_${sortDirection}`
-  }
+
+  const getCurrentSortValue = () => `${sortColumn}_${sortDirection}`
   
   return (
     <AdminLayout>
@@ -573,21 +451,12 @@ export default function SubtopicsPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {filterOptions.map((filter) => (
               <div key={filter.id} className="space-y-2">
-                <Label htmlFor={filter.id} className="text-sm font-medium">
-                  {filter.label}
-                </Label>
-                <Select 
-                  value={filter.value} 
-                  onValueChange={filter.onChange}
-                >
-                  <SelectTrigger id={filter.id}>
-                    <SelectValue placeholder={filter.placeholder} />
-                  </SelectTrigger>
+                <Label htmlFor={filter.id} className="text-sm font-medium">{filter.label}</Label>
+                <Select value={filter.value} onValueChange={filter.onChange}>
+                  <SelectTrigger id={filter.id}><SelectValue placeholder={filter.placeholder} /></SelectTrigger>
                   <SelectContent>
                     {filter.options.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
+                      <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -623,7 +492,6 @@ export default function SubtopicsPage() {
         />
       </DataManagementLayout>
       
-      {/* Subtopic Form Drawer */}
       <DataFormDrawer
         title={isEditMode ? "Edit Subtopic" : "Add New Subtopic"}
         description={isEditMode ? "Update subtopic details" : "Create a new subtopic"}
@@ -638,72 +506,37 @@ export default function SubtopicsPage() {
           {isEditMode && currentSubtopic.id && (
             <div className="space-y-2">
               <Label htmlFor="id">ID</Label>
-              <Input
-                id="id"
-                value={currentSubtopic.id}
-                readOnly
-                disabled
-                className="bg-muted"
-              />
+              <Input id="id" value={currentSubtopic.id} readOnly disabled className="bg-muted" />
             </div>
           )}
-          
           <div className="space-y-2">
             <Label htmlFor="name">Subtopic Name</Label>
-            <Input
-              id="name"
-              value={currentSubtopic.name}
-              onChange={(e) => handleFormChange("name", e.target.value)}
-              placeholder="Enter subtopic name"
-            />
+            <Input id="name" value={currentSubtopic.name} onChange={(e) => handleFormChange("name", e.target.value)} placeholder="Enter subtopic name" />
           </div>
-          
           <div className="space-y-2">
             <Label htmlFor="topic">Topic</Label>
-            <Select 
-              value={currentSubtopic.topicId} 
-              onValueChange={(value) => handleFormChange("topicId", value)}
-            >
-              <SelectTrigger id="topic">
-                <SelectValue placeholder="Select topic" />
-              </SelectTrigger>
+            <Select value={currentSubtopic.topicId} onValueChange={(value) => handleFormChange("topicId", value)}>
+              <SelectTrigger id="topic"><SelectValue placeholder="Select topic" /></SelectTrigger>
               <SelectContent>
                 {topics.map((topic) => (
-                  <SelectItem key={topic.id} value={topic.id}>
-                    {topic.name}
-                  </SelectItem>
+                  <SelectItem key={topic.id} value={topic.id}>{topic.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
-          
           <div className="space-y-2">
             <Label htmlFor="description">Description</Label>
-            <Textarea
-              id="description"
-              value={currentSubtopic.description}
-              onChange={(e) => handleFormChange("description", e.target.value)}
-              placeholder="Enter subtopic description"
-              rows={4}
-            />
+            <Textarea id="description" value={currentSubtopic.description} onChange={(e) => handleFormChange("description", e.target.value)} placeholder="Enter subtopic description" rows={4} />
           </div>
-          
           {isEditMode && currentSubtopic.createdAt && (
             <div className="space-y-2">
               <Label htmlFor="createdAt">Created At</Label>
-              <Input
-                id="createdAt"
-                value={new Date(currentSubtopic.createdAt).toLocaleDateString()}
-                readOnly
-                disabled
-                className="bg-muted"
-              />
+              <Input id="createdAt" value={new Date(currentSubtopic.createdAt).toLocaleDateString()} readOnly disabled className="bg-muted" />
             </div>
           )}
         </div>
       </DataFormDrawer>
       
-      {/* Delete Confirmation Dialog */}
       <DeleteConfirmationDialog
         open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}

@@ -1,16 +1,15 @@
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { AdminLayout } from "@/components/layout/AdminLayout"
 import { DataManagementLayout } from "@/components/layout/DataManagementLayout"
 import { DataTable } from "@/components/data/DataTable"
-import { FilterControls, FilterOption } from "@/components/data/FilterControls"
 import { DataFormDrawer } from "@/components/data/DataFormDrawer"
 import { DeleteConfirmationDialog } from "@/components/data/DeleteConfirmationDialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Edit, Eye, MoreHorizontal, Trash } from "lucide-react"
+import { Edit, Eye, MoreHorizontal, Trash, BookCopy } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,39 +20,13 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { useRouter } from "next/router"
 
-// Mock data for demonstration
-const MOCK_SUBJECTS = [
-  { 
-    id: "1", 
-    name: "Mathematics", 
-    description: "Study of numbers, quantities, and shapes",
-    createdAt: "2025-01-15"
-  },
-  { 
-    id: "2", 
-    name: "Physics", 
-    description: "Study of matter, energy, and the interaction between them",
-    createdAt: "2025-02-10"
-  },
-  { 
-    id: "3", 
-    name: "Literature", 
-    description: "Study of written works, especially those considered of superior or lasting artistic merit",
-    createdAt: "2025-03-05"
-  },
-  { 
-    id: "4", 
-    name: "History", 
-    description: "Study of past events, particularly in human affairs",
-    createdAt: "2025-01-20"
-  },
-  { 
-    id: "5", 
-    name: "Computer Science", 
-    description: "Study of computers and computational systems",
-    createdAt: "2025-02-25"
-  }
-]
+// Subject data type
+interface Subject {
+  id: string
+  name: string
+  description: string
+  createdAt: string
+}
 
 // Subject form type
 interface SubjectFormData {
@@ -63,10 +36,45 @@ interface SubjectFormData {
   createdAt?: string
 }
 
+// Mock data for demonstration
+const MOCK_SUBJECTS: Subject[] = [
+  { 
+    id: "1", 
+    name: "Mathematics", 
+    description: "The study of numbers, quantity, space, structure, and change.",
+    createdAt: "2025-01-01"
+  },
+  { 
+    id: "2", 
+    name: "Physics", 
+    description: "The natural science that studies matter, its motion and behavior through space and time, and the related entities of energy and force.",
+    createdAt: "2025-01-05"
+  },
+  { 
+    id: "3", 
+    name: "Literature", 
+    description: "The body of written works of a language, period, or culture, considered as having artistic merit.",
+    createdAt: "2025-01-10"
+  },
+  { 
+    id: "4", 
+    name: "History", 
+    description: "The study of past events, particularly in human affairs.",
+    createdAt: "2025-01-15"
+  },
+  { 
+    id: "5", 
+    name: "Computer Science", 
+    description: "The study of computation, automation, and information.",
+    createdAt: "2025-01-20"
+  }
+]
+
+
 export default function SubjectsPage() {
   const router = useRouter()
-  const [subjects, setSubjects] = useState(MOCK_SUBJECTS)
-  const [filteredSubjects, setFilteredSubjects] = useState(MOCK_SUBJECTS)
+  const [subjects, setSubjects] = useState<Subject[]>(MOCK_SUBJECTS)
+  const [filteredSubjects, setFilteredSubjects] = useState<Subject[]>(MOCK_SUBJECTS)
   const [isLoading, setIsLoading] = useState(false)
   
   // URL-synced state
@@ -89,46 +97,12 @@ export default function SubjectsPage() {
   const [isDeleting, setIsDeleting] = useState(false)
   const [subjectToDelete, setSubjectToDelete] = useState<string | null>(null)
   
-  // Initialize state from URL on first load
-  useEffect(() => {
-    if (!router.isReady) return
-    
-    // Get sort params from URL
-    const sortColumnFromUrl = router.query.sortColumn as string
-    const sortDirectionFromUrl = router.query.sortDirection as "asc" | "desc"
-    
-    if (sortColumnFromUrl) {
-      setSortColumn(sortColumnFromUrl)
-    }
-    
-    if (sortDirectionFromUrl && (sortDirectionFromUrl === "asc" || sortDirectionFromUrl === "desc")) {
-      setSortDirection(sortDirectionFromUrl)
-    }
-    
-    // Get page from URL
-    const pageFromUrl = router.query.page ? parseInt(router.query.page as string, 10) : 1
-    if (pageFromUrl && !isNaN(pageFromUrl)) {
-      setCurrentPage(pageFromUrl)
-    }
-    
-    // Get search from URL
-    const searchFromUrl = router.query.search as string
-    if (searchFromUrl) {
-      setSearchQuery(searchFromUrl)
-    }
-    
-    // Apply filters based on URL params
-    applyFilters()
-  }, [router.isReady, router.query])
-  
   // Apply all filters, sorting, and pagination
-  const applyFilters = () => {
+  const applyFilters = useCallback(() => {
     setIsLoading(true)
     
-    // Start with all subjects
     let result = [...subjects]
     
-    // Apply search filter if present
     if (searchQuery) {
       const lowerSearch = searchQuery.toLowerCase()
       result = result.filter(subject => 
@@ -137,111 +111,108 @@ export default function SubjectsPage() {
       )
     }
     
-    // Apply sorting
     result.sort((a, b) => {
       let comparison = 0
-      
-      if (sortColumn === "id") {
-        comparison = a.id.localeCompare(b.id)
-      } else if (sortColumn === "name") {
-        comparison = a.name.localeCompare(b.name)
+      const valA = a[sortColumn as keyof Subject]
+      const valB = b[sortColumn as keyof Subject]
+
+      if (typeof valA === "string" && typeof valB === "string") {
+        comparison = valA.localeCompare(valB)
+      } else if (typeof valA === "number" && typeof valB === "number") {
+        comparison = valA - valB
       } else if (sortColumn === "createdAt") {
         comparison = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
       }
-      
       return sortDirection === "asc" ? comparison : -comparison
     })
     
     setFilteredSubjects(result)
     setIsLoading(false)
-  }
+  }, [subjects, searchQuery, sortColumn, sortDirection])
+
+  // Initialize state from URL on first load
+  useEffect(() => {
+    if (!router.isReady) return
+    
+    const sortColumnFromUrl = router.query.sortColumn as string
+    const sortDirectionFromUrl = router.query.sortDirection as "asc" | "desc"
+    if (sortColumnFromUrl) setSortColumn(sortColumnFromUrl)
+    if (sortDirectionFromUrl && ["asc", "desc"].includes(sortDirectionFromUrl)) setSortDirection(sortDirectionFromUrl)
+    
+    const pageFromUrl = router.query.page ? parseInt(router.query.page as string, 10) : 1
+    if (!isNaN(pageFromUrl)) setCurrentPage(pageFromUrl)
+    
+    const searchFromUrl = router.query.search as string
+    if (searchFromUrl) setSearchQuery(searchFromUrl)
+    
+    applyFilters()
+  }, [router.isReady, router.query, applyFilters])
   
   // Apply filters whenever dependencies change
   useEffect(() => {
     applyFilters()
-  }, [subjects, searchQuery, sortColumn, sortDirection])
+  }, [subjects, searchQuery, sortColumn, sortDirection, applyFilters])
   
-  // Handle form input changes
   const handleFormChange = (field: keyof SubjectFormData, value: string) => {
-    setCurrentSubject(prev => ({
-      ...prev,
-      [field]: value
-    }))
+    setCurrentSubject(prev => ({ ...prev, [field]: value }))
   }
   
-  // Open form drawer for creating a new subject
   const handleAddNew = () => {
-    setCurrentSubject({
-      name: "",
-      description: ""
-    })
+    setCurrentSubject({ name: "", description: "" })
     setIsEditMode(false)
     setFormDrawerOpen(true)
   }
   
-  // Open form drawer for editing a subject
   const handleEdit = (id: string) => {
     const subjectToEdit = subjects.find(subject => subject.id === id)
     if (subjectToEdit) {
-      setCurrentSubject({
-        id: subjectToEdit.id,
-        name: subjectToEdit.name,
-        description: subjectToEdit.description,
-        createdAt: subjectToEdit.createdAt
-      })
+      setCurrentSubject(subjectToEdit)
       setIsEditMode(true)
       setFormDrawerOpen(true)
     }
   }
   
-  // Handle form submission
   const handleFormSubmit = () => {
     setIsSubmitting(true)
+    if (!currentSubject.name) {
+      setIsSubmitting(false)
+      return
+    }
     
-    // Simulate API call
     setTimeout(() => {
       if (isEditMode && currentSubject.id) {
-        // Update existing subject
-        setSubjects(prev => 
-          prev.map(subject => 
-            subject.id === currentSubject.id 
-              ? { 
-                  ...subject, 
-                  name: currentSubject.name,
-                  description: currentSubject.description
-                } 
-              : subject
-          )
-        )
+        const originalSubject = subjects.find(s => s.id === currentSubject.id)
+        if (originalSubject) {
+          const updatedSubject: Subject = {
+            id: currentSubject.id,
+            name: currentSubject.name,
+            description: currentSubject.description,
+            createdAt: originalSubject.createdAt
+          }
+          setSubjects(prev => prev.map(s => (s.id === updatedSubject.id ? updatedSubject : s)))
+        }
       } else {
-        // Create new subject
-        const newSubject = {
-          id: `${subjects.length + 1}`,
+        const newSubject: Subject = {
           name: currentSubject.name,
           description: currentSubject.description,
+          id: `${Date.now()}`, // Using timestamp for more unique ID
           createdAt: new Date().toISOString().split("T")[0]
         }
         setSubjects(prev => [...prev, newSubject])
       }
-      
       setIsSubmitting(false)
       setFormDrawerOpen(false)
     }, 1000)
   }
   
-  // Open delete confirmation dialog
   const handleDeleteClick = (id: string) => {
     setSubjectToDelete(id)
     setDeleteDialogOpen(true)
   }
   
-  // Handle delete confirmation
   const handleDeleteConfirm = () => {
     if (!subjectToDelete) return
-    
     setIsDeleting(true)
-    
-    // Simulate API call
     setTimeout(() => {
       setSubjects(subjects.filter(subject => subject.id !== subjectToDelete))
       setIsDeleting(false)
@@ -250,79 +221,53 @@ export default function SubjectsPage() {
     }, 1000)
   }
   
-  // Simulate viewing a subject
   const handleViewSubject = (id: string) => {
     router.push(`/admin/subjects/${id}`)
   }
+
+  const handleManageCourses = (id: string) => {
+    router.push(`/admin/courses?subject=${id}`)
+  }
   
-  // Handle search
   const handleSearch = (value: string) => {
     setSearchQuery(value)
     setCurrentPage(1)
   }
   
-  // Handle sorting
   const handleSort = (column: string, direction: "asc" | "desc") => {
     setSortColumn(column)
     setSortDirection(direction)
+    router.push({ pathname: router.pathname, query: { ...router.query, sortColumn: column, sortDirection: direction } }, undefined, { shallow: true })
   }
   
-  // Handle page change
   const handlePageChange = (page: number) => {
     setCurrentPage(page)
+    router.push({ pathname: router.pathname, query: { ...router.query, page: page.toString() } }, undefined, { shallow: true })
   }
   
-  // Simulate refreshing data
   const handleRefresh = () => {
     setIsLoading(true)
-    // In a real app, you would fetch fresh data from the API
     setTimeout(() => {
       applyFilters()
       setIsLoading(false)
     }, 500)
   }
   
-  // Get paginated data
   const getPaginatedData = () => {
     const itemsPerPage = 10
     const startIndex = (currentPage - 1) * itemsPerPage
-    const endIndex = startIndex + itemsPerPage
-    
-    return filteredSubjects.slice(startIndex, endIndex)
+    return filteredSubjects.slice(startIndex, startIndex + itemsPerPage)
   }
   
-  // Table columns configuration
   const columns = [
-    {
-      id: "id",
-      header: "ID",
-      cell: (subject: typeof MOCK_SUBJECTS[0]) => <span className="text-muted-foreground text-sm">{subject.id}</span>,
-      sortable: true
-    },
-    {
-      id: "name",
-      header: "Subject Name",
-      cell: (subject: typeof MOCK_SUBJECTS[0]) => <span className="font-medium">{subject.name}</span>,
-      sortable: true
-    },
-    {
-      id: "description",
-      header: "Description",
-      cell: (subject: typeof MOCK_SUBJECTS[0]) => (
-        <span className="truncate block max-w-[300px]">{subject.description}</span>
-      ),
-      sortable: false
-    },
-    {
-      id: "createdAt",
-      header: "Created At",
-      cell: (subject: typeof MOCK_SUBJECTS[0]) => new Date(subject.createdAt).toLocaleDateString(),
-      sortable: true
-    },
+    { id: "id", header: "ID", cell: (subject: Subject) => <span className="text-muted-foreground text-sm">{subject.id}</span>, sortable: true },
+    { id: "name", header: "Subject Name", cell: (subject: Subject) => <span className="font-medium">{subject.name}</span>, sortable: true },
+    { id: "description", header: "Description", cell: (subject: Subject) => <span className="truncate block max-w-[400px]">{subject.description}</span>, sortable: false },
+    { id: "createdAt", header: "Created At", cell: (subject: Subject) => new Date(subject.createdAt).toLocaleDateString(), sortable: true },
     {
       id: "actions",
       header: "",
-      cell: (subject: typeof MOCK_SUBJECTS[0]) => (
+      cell: (subject: Subject) => (
         <div className="flex justify-end">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -333,22 +278,11 @@ export default function SubjectsPage() {
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>Actions</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => handleViewSubject(subject.id)}>
-                <Eye className="mr-2 h-4 w-4" />
-                View
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleEdit(subject.id)}>
-                <Edit className="mr-2 h-4 w-4" />
-                Edit
-              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleViewSubject(subject.id)}><Eye className="mr-2 h-4 w-4" />View</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleEdit(subject.id)}><Edit className="mr-2 h-4 w-4" />Edit</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleManageCourses(subject.id)}><BookCopy className="mr-2 h-4 w-4" />Manage Courses</DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem 
-                onClick={() => handleDeleteClick(subject.id)}
-                className="text-destructive focus:text-destructive"
-              >
-                <Trash className="mr-2 h-4 w-4" />
-                Delete
-              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleDeleteClick(subject.id)} className="text-destructive focus:text-destructive"><Trash className="mr-2 h-4 w-4" />Delete</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -356,7 +290,6 @@ export default function SubjectsPage() {
     }
   ]
   
-  // Sort options
   const sortOptions = [
     { label: "Name (A-Z)", value: "name_asc" },
     { label: "Name (Z-A)", value: "name_desc" },
@@ -365,17 +298,13 @@ export default function SubjectsPage() {
     { label: "Newest First", value: "createdAt_desc" },
     { label: "Oldest First", value: "createdAt_asc" }
   ]
-  
-  // Handle sort dropdown change
+
   const handleSortChange = (value: string) => {
     const [column, direction] = value.split("_")
     handleSort(column, direction as "asc" | "desc")
   }
-  
-  // Get current sort value for dropdown
-  const getCurrentSortValue = () => {
-    return `${sortColumn}_${sortDirection}`
-  }
+
+  const getCurrentSortValue = () => `${sortColumn}_${sortDirection}`
   
   return (
     <AdminLayout>
@@ -415,7 +344,6 @@ export default function SubjectsPage() {
         />
       </DataManagementLayout>
       
-      {/* Subject Form Drawer */}
       <DataFormDrawer
         title={isEditMode ? "Edit Subject" : "Add New Subject"}
         description={isEditMode ? "Update subject details" : "Create a new subject"}
@@ -430,60 +358,33 @@ export default function SubjectsPage() {
           {isEditMode && currentSubject.id && (
             <div className="space-y-2">
               <Label htmlFor="id">ID</Label>
-              <Input
-                id="id"
-                value={currentSubject.id}
-                readOnly
-                disabled
-                className="bg-muted"
-              />
+              <Input id="id" value={currentSubject.id} readOnly disabled className="bg-muted" />
             </div>
           )}
-          
           <div className="space-y-2">
             <Label htmlFor="name">Subject Name</Label>
-            <Input
-              id="name"
-              value={currentSubject.name}
-              onChange={(e) => handleFormChange("name", e.target.value)}
-              placeholder="Enter subject name"
-            />
+            <Input id="name" value={currentSubject.name} onChange={(e) => handleFormChange("name", e.target.value)} placeholder="Enter subject name" />
           </div>
-          
           <div className="space-y-2">
             <Label htmlFor="description">Description</Label>
-            <Textarea
-              id="description"
-              value={currentSubject.description}
-              onChange={(e) => handleFormChange("description", e.target.value)}
-              placeholder="Enter subject description"
-              rows={4}
-            />
+            <Textarea id="description" value={currentSubject.description} onChange={(e) => handleFormChange("description", e.target.value)} placeholder="Enter subject description" rows={4} />
           </div>
-          
           {isEditMode && currentSubject.createdAt && (
             <div className="space-y-2">
               <Label htmlFor="createdAt">Created At</Label>
-              <Input
-                id="createdAt"
-                value={new Date(currentSubject.createdAt).toLocaleDateString()}
-                readOnly
-                disabled
-                className="bg-muted"
-              />
+              <Input id="createdAt" value={new Date(currentSubject.createdAt).toLocaleDateString()} readOnly disabled className="bg-muted" />
             </div>
           )}
         </div>
       </DataFormDrawer>
       
-      {/* Delete Confirmation Dialog */}
       <DeleteConfirmationDialog
         open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
         onConfirm={handleDeleteConfirm}
         isDeleting={isDeleting}
         title="Delete Subject"
-        description="Are you sure you want to delete this subject? This action cannot be undone and will remove all associated content."
+        description="Are you sure you want to delete this subject? This action cannot be undone and will remove all associated courses and topics."
       />
     </AdminLayout>
   )

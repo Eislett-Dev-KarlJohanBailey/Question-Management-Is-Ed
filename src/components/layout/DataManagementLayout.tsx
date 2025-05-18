@@ -1,58 +1,38 @@
 
-import { ReactNode, useEffect, useState } from "react"
+import React, { useState, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { 
+import { PlusCircle, RefreshCw, Search, SlidersHorizontal, X } from "lucide-react"
+import { cn } from "@/lib/utils"
+import { useDebounce } from "@/hooks/use-debounce"
+import { useRouter } from "next/router"
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue
+  SelectValue,
 } from "@/components/ui/select"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger
-} from "@/components/ui/dropdown-menu"
-import { 
-  ChevronDown, 
-  Download, 
-  Filter, 
-  Plus, 
-  RefreshCw, 
-  Search, 
-  SlidersHorizontal, 
-  Upload 
-} from "lucide-react"
-import { cn } from "@/lib/utils"
-import { Card } from "@/components/ui/card"
-import { useRouter } from "next/router"
-import { useDebounce } from "@/hooks/use-debounce"
+import { useIsMobile } from "@/hooks/use-mobile"
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 
 export interface DataManagementLayoutProps {
   title: string
-  description?: string
-  children: ReactNode
+  description: string
+  children: React.ReactNode
   onAddNew?: () => void
   addNewLabel?: string
   searchPlaceholder?: string
-  onSearch?: (value: string) => void
-  filterControls?: ReactNode
-  sortOptions?: {
-    label: string
-    value: string
-  }[]
+  onSearch?: (query: string) => void
+  sortOptions?: { label: string; value: string }[]
   onSortChange?: (value: string) => void
-  actionButtons?: ReactNode
+  filterControls?: React.ReactNode
   isLoading?: boolean
   onRefresh?: () => void
   className?: string
   defaultSort?: string
   defaultShowFilters?: boolean
+  secondaryActions?: React.ReactNode // Added this prop
 }
 
 export function DataManagementLayout({
@@ -63,231 +43,217 @@ export function DataManagementLayout({
   addNewLabel = "Add New",
   searchPlaceholder = "Search...",
   onSearch,
-  filterControls,
   sortOptions,
   onSortChange,
-  actionButtons,
+  filterControls,
   isLoading = false,
   onRefresh,
   className,
   defaultSort,
-  defaultShowFilters = false
+  defaultShowFilters = false,
+  secondaryActions,
 }: DataManagementLayoutProps) {
   const router = useRouter()
-  const [searchValue, setSearchValue] = useState("")
+  const isMobile = useIsMobile()
+
+  const [internalSearchQuery, setInternalSearchQuery] = useState(router.query.search as string || "")
+  const debouncedSearchQuery = useDebounce(internalSearchQuery, 500)
+
+  const [internalSortValue, setInternalSortValue] = useState(defaultSort || (sortOptions && sortOptions.length > 0 ? sortOptions[0].value : ""))
   const [showFilters, setShowFilters] = useState(defaultShowFilters)
-  const [currentSort, setCurrentSort] = useState(defaultSort || "")
-  const [isInitialized, setIsInitialized] = useState(false)
-  
-  // Debounce search value to prevent excessive URL updates and API calls
-  const debouncedSearchValue = useDebounce(searchValue, 300)
-  
-  // Initialize from URL query params
+
   useEffect(() => {
-    if (!router.isReady) return
-    
-    // Get search from URL
-    const searchFromUrl = router.query.search as string
-    if (searchFromUrl) {
-      setSearchValue(searchFromUrl)
+    if (router.isReady) {
+      const querySearch = router.query.search as string || ""
+      if (querySearch !== internalSearchQuery) {
+        setInternalSearchQuery(querySearch)
+      }
+
+      const querySort = router.query.sort as string || defaultSort || (sortOptions && sortOptions.length > 0 ? sortOptions[0].value : "")
+      if (querySort !== internalSortValue) {
+        setInternalSortValue(querySort)
+      }
+      
+      if(router.query.showFilters === "true") {
+        setShowFilters(true)
+      } else if (router.query.showFilters === "false") {
+        setShowFilters(false)
+      } else {
+        setShowFilters(defaultShowFilters)
+      }
     }
-    
-    // Get sort from URL
-    const sortFromUrl = router.query.sort as string
-    if (sortFromUrl && sortOptions?.some(option => option.value === sortFromUrl)) {
-      setCurrentSort(sortFromUrl)
-    }
-    
-    // Get filter visibility from URL
-    const showFiltersFromUrl = router.query.showFilters === "true"
-    setShowFilters(showFiltersFromUrl)
-    
-    setIsInitialized(true)
-  }, [router.isReady, router.query, sortOptions])
-  
-  // Update URL and trigger search when debounced search value changes
+  }, [router.isReady, router.query, defaultSort, sortOptions, internalSearchQuery, internalSortValue, defaultShowFilters])
+
   useEffect(() => {
-    if (!isInitialized) return
-    
-    // Update URL
-    const query = { ...router.query }
-    if (debouncedSearchValue) {
-      query.search = debouncedSearchValue
+    if (onSearch) {
+      onSearch(debouncedSearchQuery)
+    }
+    const currentQuery = { ...router.query }
+    if (debouncedSearchQuery) {
+      currentQuery.search = debouncedSearchQuery
     } else {
-      delete query.search
+      delete currentQuery.search
     }
-    
-    router.push({
-      pathname: router.pathname,
-      query
-    }, undefined, { shallow: true })
-    
-    // Trigger search callback
-    onSearch?.(debouncedSearchValue)
-  }, [debouncedSearchValue, router, isInitialized, onSearch, router.pathname])
-  
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value
-    setSearchValue(value)
+    if (Object.keys(currentQuery).length > 0 || router.pathname !== router.asPath.split("?")[0]) {
+        router.push({ pathname: router.pathname, query: currentQuery }, undefined, { shallow: true })
+    }
+  }, [debouncedSearchQuery, onSearch, router])
+
+  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setInternalSearchQuery(event.target.value)
   }
-  
+
+  const handleClearSearch = () => {
+    setInternalSearchQuery("")
+    if (onSearch) {
+      onSearch("")
+    }
+    const { search, ...restQuery } = router.query
+    router.push({ pathname: router.pathname, query: restQuery }, undefined, { shallow: true })
+  }
+
   const handleSortChange = (value: string) => {
-    setCurrentSort(value)
-    
-    // Update URL
-    const query = { ...router.query, sort: value }
-    router.push({
-      pathname: router.pathname,
-      query
-    }, undefined, { shallow: true })
-    
-    onSortChange?.(value)
+    setInternalSortValue(value)
+    if (onSortChange) {
+      onSortChange(value)
+    }
+    router.push({ pathname: router.pathname, query: { ...router.query, sort: value } }, undefined, { shallow: true })
   }
-  
-  const handleToggleFilters = () => {
+
+  const toggleFilters = () => {
     const newShowFilters = !showFilters
     setShowFilters(newShowFilters)
-    
-    // Update URL
-    const query = { ...router.query, showFilters: newShowFilters ? "true" : null }
-    if (!newShowFilters) delete query.showFilters
-    
-    router.push({
-      pathname: router.pathname,
-      query
-    }, undefined, { shallow: true })
+    router.push({ pathname: router.pathname, query: { ...router.query, showFilters: newShowFilters.toString() } }, undefined, { shallow: true })
   }
   
-  const handleRefresh = () => {
-    onRefresh?.()
-  }
-  
-  return (
-    <div className={cn("space-y-6", className)}>
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="space-y-1">
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{title}</h1>
-          {description && (
-            <p className="text-sm text-muted-foreground">{description}</p>
-          )}
-        </div>
-        
-        {onAddNew && (
-          <Button 
-            onClick={onAddNew} 
-            className="self-start sm:self-auto flex items-center gap-2"
-          >
-            <Plus className="h-4 w-4" />
-            <span>{addNewLabel}</span>
-          </Button>
-        )}
-      </div>
-      
-      {/* Controls Bar */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            type="search"
-            placeholder={searchPlaceholder}
-            className="pl-8 w-full"
-            value={searchValue}
-            onChange={handleSearchChange}
-          />
-        </div>
-        
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-          {/* Sort Dropdown */}
-          {sortOptions && sortOptions.length > 0 && (
-            <Select value={currentSort} onValueChange={handleSortChange}>
-              <SelectTrigger className="w-[180px] h-9">
-                <SelectValue placeholder="Sort by" />
-              </SelectTrigger>
-              <SelectContent>
-                {sortOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-          
-          {/* Filter Button */}
-          {filterControls && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-9"
-              onClick={handleToggleFilters}
-            >
-              <Filter className="h-4 w-4 mr-2" />
+  const FilterControlsWrapper = ({ children }: { children: React.ReactNode }) => {
+    if (isMobile) {
+      return (
+        <Sheet open={showFilters} onOpenChange={(open) => {
+          if (!open) toggleFilters() // Close if sheet is dismissed
+        }}>
+          <SheetTrigger asChild>
+            <Button variant="outline" className="ml-2">
+              <SlidersHorizontal className="mr-2 h-4 w-4" />
               Filters
-              <ChevronDown className={cn(
-                "ml-1 h-4 w-4 transition-transform", 
-                showFilters ? "rotate-180" : ""
-              )} />
+            </Button>
+          </SheetTrigger>
+          <SheetContent className="w-[300px] sm:w-[400px]">
+            <SheetHeader>
+              <SheetTitle>Filters</SheetTitle>
+            </SheetHeader>
+            <div className="py-4 space-y-4">
+              {children}
+            </div>
+          </SheetContent>
+        </Sheet>
+      )
+    }
+    return (
+      <Button variant="outline" onClick={toggleFilters} className="ml-2">
+        <SlidersHorizontal className="mr-2 h-4 w-4" />
+        {showFilters ? "Hide Filters" : "Show Filters"}
+      </Button>
+    )
+  }
+
+
+  return (
+    <div className={cn("p-4 sm:p-6 lg:p-8 space-y-6", className)}>
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{title}</h1>
+          <p className="text-muted-foreground mt-1">{description}</p>
+        </div>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
+          {secondaryActions}
+          {onAddNew && (
+            <Button onClick={onAddNew}>
+              <PlusCircle className="mr-2 h-4 w-4" />
+              {addNewLabel}
             </Button>
           )}
-          
-          {/* Actions Dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="h-9">
-                <SlidersHorizontal className="h-4 w-4 mr-2" />
-                Actions
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-[180px]">
-              <DropdownMenuLabel>Actions</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuGroup>
-                {onRefresh && (
-                  <DropdownMenuItem onClick={handleRefresh}>
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                    Refresh
-                  </DropdownMenuItem>
-                )}
-                <DropdownMenuItem>
-                  <Download className="h-4 w-4 mr-2" />
-                  Export
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <Upload className="h-4 w-4 mr-2" />
-                  Import
-                </DropdownMenuItem>
-              </DropdownMenuGroup>
-              {actionButtons && (
-                <>
-                  <DropdownMenuSeparator />
-                  {actionButtons}
-                </>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
         </div>
       </div>
-      
-      {/* Filter Panel */}
-      {filterControls && showFilters && (
-        <Card className="p-4">
-          <div className="space-y-4">
-            {filterControls}
+
+      <div className="space-y-4">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          {onSearch && (
+            <div className="relative flex-grow md:max-w-sm">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="search"
+                placeholder={searchPlaceholder}
+                value={internalSearchQuery}
+                onChange={handleSearchChange}
+                className="pl-10 w-full"
+              />
+              {internalSearchQuery && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7"
+                  onClick={handleClearSearch}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+          )}
+          
+          <div className="flex items-center space-x-2 flex-wrap gap-2">
+            {sortOptions && sortOptions.length > 0 && onSortChange && (
+              <Select value={internalSortValue} onValueChange={handleSortChange}>
+                <SelectTrigger className="w-full md:w-auto min-w-[180px]">
+                  <SelectValue placeholder="Sort by..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {sortOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+
+            {filterControls && (
+              <FilterControlsWrapper>
+                {filterControls}
+              </FilterControlsWrapper>
+            )}
+
+            {onRefresh && (
+              <Button variant="outline" size="icon" onClick={onRefresh} disabled={isLoading} title="Refresh data">
+                <RefreshCw className={cn("h-4 w-4", { "animate-spin": isLoading })} />
+              </Button>
+            )}
           </div>
-        </Card>
-      )}
-      
-      {/* Content Area */}
-      <div className={cn("relative", isLoading && "opacity-60 pointer-events-none")}>
-        {children}
+        </div>
         
-        {isLoading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-background/50">
-            <RefreshCw className="h-8 w-8 animate-spin text-primary" />
-          </div>
+        {isMobile ? (
+          showFilters && filterControls && (
+            <div className="block md:hidden mt-4 p-4 border rounded-md bg-card">
+              {/* Filters are in Sheet for mobile, this space can be used for other mobile-specific controls or left empty */}
+            </div>
+          )
+        ) : (
+          showFilters && filterControls && (
+            <div className="p-4 border rounded-md bg-card">
+              {filterControls}
+            </div>
+          )
         )}
+
       </div>
+
+      {isLoading && (
+        <div className="flex items-center justify-center py-8">
+          <RefreshCw className="h-8 w-8 text-muted-foreground animate-spin" />
+          <p className="ml-2 text-muted-foreground">Loading data...</p>
+        </div>
+      )}
+      {!isLoading && children}
     </div>
   )
 }

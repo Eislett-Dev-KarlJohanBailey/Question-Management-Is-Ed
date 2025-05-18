@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { AdminLayout } from "@/components/layout/AdminLayout"
 import { DataManagementLayout } from "@/components/layout/DataManagementLayout"
 import { DataTable } from "@/components/data/DataTable"
@@ -26,6 +26,24 @@ import {
   SelectTrigger,
   SelectValue
 } from "@/components/ui/select"
+
+// Topic data type
+interface Topic {
+  id: string
+  name: string
+  description: string
+  courseId: string
+  createdAt: string
+}
+
+// Topic form type
+interface TopicFormData {
+  id?: string
+  name: string
+  description: string
+  courseId: string
+  createdAt?: string
+}
 
 // Mock data for demonstration
 const MOCK_COURSES = [
@@ -56,7 +74,7 @@ const MOCK_COURSES = [
   }
 ]
 
-const MOCK_TOPICS = [
+const MOCK_TOPICS: Topic[] = [
   { 
     id: "1", 
     name: "Limits and Continuity", 
@@ -94,19 +112,11 @@ const MOCK_TOPICS = [
   }
 ]
 
-// Topic form type
-interface TopicFormData {
-  id?: string
-  name: string
-  description: string
-  courseId: string
-  createdAt?: string
-}
 
 export default function TopicsPage() {
   const router = useRouter()
-  const [topics, setTopics] = useState(MOCK_TOPICS)
-  const [filteredTopics, setFilteredTopics] = useState(MOCK_TOPICS)
+  const [topics, setTopics] = useState<Topic[]>(MOCK_TOPICS)
+  const [filteredTopics, setFilteredTopics] = useState<Topic[]>(MOCK_TOPICS)
   const [courses, setCourses] = useState(MOCK_COURSES)
   const [isLoading, setIsLoading] = useState(false)
   
@@ -132,52 +142,12 @@ export default function TopicsPage() {
   const [isDeleting, setIsDeleting] = useState(false)
   const [topicToDelete, setTopicToDelete] = useState<string | null>(null)
   
-  // Initialize state from URL on first load
-  useEffect(() => {
-    if (!router.isReady) return
-    
-    // Get sort params from URL
-    const sortColumnFromUrl = router.query.sortColumn as string
-    const sortDirectionFromUrl = router.query.sortDirection as "asc" | "desc"
-    
-    if (sortColumnFromUrl) {
-      setSortColumn(sortColumnFromUrl)
-    }
-    
-    if (sortDirectionFromUrl && (sortDirectionFromUrl === "asc" || sortDirectionFromUrl === "desc")) {
-      setSortDirection(sortDirectionFromUrl)
-    }
-    
-    // Get page from URL
-    const pageFromUrl = router.query.page ? parseInt(router.query.page as string, 10) : 1
-    if (pageFromUrl && !isNaN(pageFromUrl)) {
-      setCurrentPage(pageFromUrl)
-    }
-    
-    // Get search from URL
-    const searchFromUrl = router.query.search as string
-    if (searchFromUrl) {
-      setSearchQuery(searchFromUrl)
-    }
-    
-    // Get course filter from URL
-    const courseFilterFromUrl = router.query.course as string
-    if (courseFilterFromUrl) {
-      setCourseFilter(courseFilterFromUrl)
-    }
-    
-    // Apply filters based on URL params
-    applyFilters()
-  }, [router.isReady, router.query])
-  
   // Apply all filters, sorting, and pagination
-  const applyFilters = () => {
+  const applyFilters = useCallback(() => {
     setIsLoading(true)
     
-    // Start with all topics
     let result = [...topics]
     
-    // Apply search filter if present
     if (searchQuery) {
       const lowerSearch = searchQuery.toLowerCase()
       result = result.filter(topic => 
@@ -186,131 +156,125 @@ export default function TopicsPage() {
       )
     }
     
-    // Apply course filter if present
     if (courseFilter) {
       result = result.filter(topic => topic.courseId === courseFilter)
     }
     
-    // Apply sorting
     result.sort((a, b) => {
       let comparison = 0
-      
-      if (sortColumn === "id") {
-        comparison = a.id.localeCompare(b.id)
-      } else if (sortColumn === "name") {
-        comparison = a.name.localeCompare(b.name)
-      } else if (sortColumn === "course") {
+      const valA = a[sortColumn as keyof Topic]
+      const valB = b[sortColumn as keyof Topic]
+
+      if (sortColumn === "course") {
         const courseA = courses.find(c => c.id === a.courseId)?.name || ""
         const courseB = courses.find(c => c.id === b.courseId)?.name || ""
         comparison = courseA.localeCompare(courseB)
+      } else if (typeof valA === "string" && typeof valB === "string") {
+        comparison = valA.localeCompare(valB)
+      } else if (typeof valA === "number" && typeof valB === "number") {
+        comparison = valA - valB
       } else if (sortColumn === "createdAt") {
         comparison = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
       }
-      
       return sortDirection === "asc" ? comparison : -comparison
     })
     
     setFilteredTopics(result)
     setIsLoading(false)
-  }
+  }, [topics, searchQuery, courseFilter, sortColumn, sortDirection, courses])
+
+  // Initialize state from URL on first load
+  useEffect(() => {
+    if (!router.isReady) return
+    
+    const sortColumnFromUrl = router.query.sortColumn as string
+    const sortDirectionFromUrl = router.query.sortDirection as "asc" | "desc"
+    if (sortColumnFromUrl) setSortColumn(sortColumnFromUrl)
+    if (sortDirectionFromUrl && ["asc", "desc"].includes(sortDirectionFromUrl)) setSortDirection(sortDirectionFromUrl)
+    
+    const pageFromUrl = router.query.page ? parseInt(router.query.page as string, 10) : 1
+    if (!isNaN(pageFromUrl)) setCurrentPage(pageFromUrl)
+    
+    const searchFromUrl = router.query.search as string
+    if (searchFromUrl) setSearchQuery(searchFromUrl)
+    
+    const courseFilterFromUrl = router.query.course as string
+    if (courseFilterFromUrl) setCourseFilter(courseFilterFromUrl)
+    
+    applyFilters()
+  }, [router.isReady, router.query, applyFilters])
   
   // Apply filters whenever dependencies change
   useEffect(() => {
     applyFilters()
-  }, [topics, searchQuery, courseFilter, sortColumn, sortDirection])
+  }, [topics, searchQuery, courseFilter, sortColumn, sortDirection, applyFilters])
   
-  // Handle form input changes
   const handleFormChange = (field: keyof TopicFormData, value: string) => {
-    setCurrentTopic(prev => ({
-      ...prev,
-      [field]: value
-    }))
+    setCurrentTopic(prev => ({ ...prev, [field]: value }))
   }
   
-  // Open form drawer for creating a new topic
   const handleAddNew = () => {
-    setCurrentTopic({
-      name: "",
-      description: "",
-      courseId: ""
+    setCurrentTopic({ 
+      name: "", 
+      description: "", 
+      courseId: router.query.course as string || "" 
     })
     setIsEditMode(false)
     setFormDrawerOpen(true)
   }
   
-  // Open form drawer for editing a topic
   const handleEdit = (id: string) => {
     const topicToEdit = topics.find(topic => topic.id === id)
     if (topicToEdit) {
-      setCurrentTopic({
-        id: topicToEdit.id,
-        name: topicToEdit.name,
-        description: topicToEdit.description,
-        courseId: topicToEdit.courseId,
-        createdAt: topicToEdit.createdAt
-      })
+      setCurrentTopic(topicToEdit)
       setIsEditMode(true)
       setFormDrawerOpen(true)
     }
   }
   
-  // Handle form submission
   const handleFormSubmit = () => {
     setIsSubmitting(true)
-    
-    // Validate form
     if (!currentTopic.name || !currentTopic.courseId) {
-      // In a real app, you would show validation errors
       setIsSubmitting(false)
       return
     }
     
-    // Simulate API call
     setTimeout(() => {
       if (isEditMode && currentTopic.id) {
-        // Update existing topic
-        setTopics(prev => 
-          prev.map(topic => 
-            topic.id === currentTopic.id 
-              ? { 
-                  ...topic, 
-                  name: currentTopic.name,
-                  description: currentTopic.description,
-                  courseId: currentTopic.courseId
-                } 
-              : topic
-          )
-        )
+        const originalTopic = topics.find(t => t.id === currentTopic.id)
+        if (originalTopic) {
+          const updatedTopic: Topic = {
+            id: currentTopic.id,
+            name: currentTopic.name,
+            description: currentTopic.description,
+            courseId: currentTopic.courseId,
+            createdAt: originalTopic.createdAt
+          }
+          setTopics(prev => prev.map(t => (t.id === updatedTopic.id ? updatedTopic : t)))
+        }
       } else {
-        // Create new topic
-        const newTopic = {
-          id: `${topics.length + 1}`,
+        const newTopic: Topic = {
           name: currentTopic.name,
           description: currentTopic.description,
           courseId: currentTopic.courseId,
+          id: `${Date.now()}`, // Using timestamp for more unique ID
           createdAt: new Date().toISOString().split("T")[0]
         }
         setTopics(prev => [...prev, newTopic])
       }
-      
       setIsSubmitting(false)
       setFormDrawerOpen(false)
     }, 1000)
   }
   
-  // Open delete confirmation dialog
   const handleDeleteClick = (id: string) => {
     setTopicToDelete(id)
     setDeleteDialogOpen(true)
   }
   
-  // Handle delete confirmation
   const handleDeleteConfirm = () => {
     if (!topicToDelete) return
-    
     setIsDeleting(true)
-    
-    // Simulate API call
     setTimeout(() => {
       setTopics(topics.filter(topic => topic.id !== topicToDelete))
       setIsDeleting(false)
@@ -319,93 +283,54 @@ export default function TopicsPage() {
     }, 1000)
   }
   
-  // Simulate viewing a topic
   const handleViewTopic = (id: string) => {
     router.push(`/admin/topics/${id}`)
   }
   
-  // Navigate to subtopics management for a specific topic
   const handleManageSubtopics = (id: string) => {
     router.push(`/admin/topics/subtopics?topic=${id}`)
   }
   
-  // Handle search
   const handleSearch = (value: string) => {
     setSearchQuery(value)
     setCurrentPage(1)
   }
   
-  // Handle course filter change
   const handleCourseFilterChange = (value: string) => {
     setCourseFilter(value)
     setCurrentPage(1)
-    
-    // Update URL
-    const query = { ...router.query, course: value || null, page: "1" }
+    const query = { ...router.query, course: value || undefined, page: "1" }
     if (!value) delete query.course
-    
-    router.push({
-      pathname: router.pathname,
-      query
-    }, undefined, { shallow: true })
+    router.push({ pathname: router.pathname, query }, undefined, { shallow: true })
   }
   
-  // Handle sorting
   const handleSort = (column: string, direction: "asc" | "desc") => {
     setSortColumn(column)
     setSortDirection(direction)
-    
-    // Update URL
-    const query = { 
-      ...router.query, 
-      sortColumn: column, 
-      sortDirection: direction 
-    }
-    
-    router.push({
-      pathname: router.pathname,
-      query
-    }, undefined, { shallow: true })
+    router.push({ pathname: router.pathname, query: { ...router.query, sortColumn: column, sortDirection: direction } }, undefined, { shallow: true })
   }
   
-  // Handle page change
   const handlePageChange = (page: number) => {
     setCurrentPage(page)
-    
-    // Update URL
-    const query = { ...router.query, page: page.toString() }
-    
-    router.push({
-      pathname: router.pathname,
-      query
-    }, undefined, { shallow: true })
+    router.push({ pathname: router.pathname, query: { ...router.query, page: page.toString() } }, undefined, { shallow: true })
   }
   
-  // Simulate refreshing data
   const handleRefresh = () => {
     setIsLoading(true)
-    // In a real app, you would fetch fresh data from the API
     setTimeout(() => {
       applyFilters()
       setIsLoading(false)
     }, 500)
   }
   
-  // Get paginated data
   const getPaginatedData = () => {
     const itemsPerPage = 10
     const startIndex = (currentPage - 1) * itemsPerPage
-    const endIndex = startIndex + itemsPerPage
-    
-    return filteredTopics.slice(startIndex, endIndex)
+    return filteredTopics.slice(startIndex, startIndex + itemsPerPage)
   }
   
-  // Get course name by ID
-  const getCourseName = (courseId: string) => {
-    return courses.find(course => course.id === courseId)?.name || "Unknown"
-  }
+  const getCourseName = (courseId: string) => courses.find(c => c.id === courseId)?.name || "Unknown"
   
-  // Filter options
   const filterOptions = [
     {
       id: "course",
@@ -416,52 +341,21 @@ export default function TopicsPage() {
       placeholder: "Select course",
       options: [
         { label: "All Courses", value: "" },
-        ...courses.map(course => ({
-          label: course.name,
-          value: course.id
-        }))
+        ...courses.map(course => ({ label: course.name, value: course.id }))
       ]
     }
   ]
   
-  // Table columns configuration
   const columns = [
-    {
-      id: "id",
-      header: "ID",
-      cell: (topic: typeof MOCK_TOPICS[0]) => <span className="text-muted-foreground text-sm">{topic.id}</span>,
-      sortable: true
-    },
-    {
-      id: "name",
-      header: "Topic Name",
-      cell: (topic: typeof MOCK_TOPICS[0]) => <span className="font-medium">{topic.name}</span>,
-      sortable: true
-    },
-    {
-      id: "course",
-      header: "Course",
-      cell: (topic: typeof MOCK_TOPICS[0]) => <span>{getCourseName(topic.courseId)}</span>,
-      sortable: true
-    },
-    {
-      id: "description",
-      header: "Description",
-      cell: (topic: typeof MOCK_TOPICS[0]) => (
-        <span className="truncate block max-w-[300px]">{topic.description}</span>
-      ),
-      sortable: false
-    },
-    {
-      id: "createdAt",
-      header: "Created At",
-      cell: (topic: typeof MOCK_TOPICS[0]) => new Date(topic.createdAt).toLocaleDateString(),
-      sortable: true
-    },
+    { id: "id", header: "ID", cell: (topic: Topic) => <span className="text-muted-foreground text-sm">{topic.id}</span>, sortable: true },
+    { id: "name", header: "Topic Name", cell: (topic: Topic) => <span className="font-medium">{topic.name}</span>, sortable: true },
+    { id: "course", header: "Course", cell: (topic: Topic) => <span>{getCourseName(topic.courseId)}</span>, sortable: true },
+    { id: "description", header: "Description", cell: (topic: Topic) => <span className="truncate block max-w-[300px]">{topic.description}</span>, sortable: false },
+    { id: "createdAt", header: "Created At", cell: (topic: Topic) => new Date(topic.createdAt).toLocaleDateString(), sortable: true },
     {
       id: "actions",
       header: "",
-      cell: (topic: typeof MOCK_TOPICS[0]) => (
+      cell: (topic: Topic) => (
         <div className="flex justify-end">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -472,26 +366,11 @@ export default function TopicsPage() {
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>Actions</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => handleViewTopic(topic.id)}>
-                <Eye className="mr-2 h-4 w-4" />
-                View
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleEdit(topic.id)}>
-                <Edit className="mr-2 h-4 w-4" />
-                Edit
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleManageSubtopics(topic.id)}>
-                <List className="mr-2 h-4 w-4" />
-                Manage Subtopics
-              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleViewTopic(topic.id)}><Eye className="mr-2 h-4 w-4" />View</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleEdit(topic.id)}><Edit className="mr-2 h-4 w-4" />Edit</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleManageSubtopics(topic.id)}><List className="mr-2 h-4 w-4" />Manage Subtopics</DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem 
-                onClick={() => handleDeleteClick(topic.id)}
-                className="text-destructive focus:text-destructive"
-              >
-                <Trash className="mr-2 h-4 w-4" />
-                Delete
-              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleDeleteClick(topic.id)} className="text-destructive focus:text-destructive"><Trash className="mr-2 h-4 w-4" />Delete</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -499,7 +378,6 @@ export default function TopicsPage() {
     }
   ]
   
-  // Sort options
   const sortOptions = [
     { label: "Name (A-Z)", value: "name_asc" },
     { label: "Name (Z-A)", value: "name_desc" },
@@ -510,17 +388,13 @@ export default function TopicsPage() {
     { label: "Newest First", value: "createdAt_desc" },
     { label: "Oldest First", value: "createdAt_asc" }
   ]
-  
-  // Handle sort dropdown change
+
   const handleSortChange = (value: string) => {
     const [column, direction] = value.split("_")
     handleSort(column, direction as "asc" | "desc")
   }
-  
-  // Get current sort value for dropdown
-  const getCurrentSortValue = () => {
-    return `${sortColumn}_${sortDirection}`
-  }
+
+  const getCurrentSortValue = () => `${sortColumn}_${sortDirection}`
   
   return (
     <AdminLayout>
@@ -537,21 +411,12 @@ export default function TopicsPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {filterOptions.map((filter) => (
               <div key={filter.id} className="space-y-2">
-                <Label htmlFor={filter.id} className="text-sm font-medium">
-                  {filter.label}
-                </Label>
-                <Select 
-                  value={filter.value} 
-                  onValueChange={filter.onChange}
-                >
-                  <SelectTrigger id={filter.id}>
-                    <SelectValue placeholder={filter.placeholder} />
-                  </SelectTrigger>
+                <Label htmlFor={filter.id} className="text-sm font-medium">{filter.label}</Label>
+                <Select value={filter.value} onValueChange={filter.onChange}>
+                  <SelectTrigger id={filter.id}><SelectValue placeholder={filter.placeholder} /></SelectTrigger>
                   <SelectContent>
                     {filter.options.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
+                      <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -597,7 +462,6 @@ export default function TopicsPage() {
         />
       </DataManagementLayout>
       
-      {/* Topic Form Drawer */}
       <DataFormDrawer
         title={isEditMode ? "Edit Topic" : "Add New Topic"}
         description={isEditMode ? "Update topic details" : "Create a new topic"}
@@ -612,72 +476,37 @@ export default function TopicsPage() {
           {isEditMode && currentTopic.id && (
             <div className="space-y-2">
               <Label htmlFor="id">ID</Label>
-              <Input
-                id="id"
-                value={currentTopic.id}
-                readOnly
-                disabled
-                className="bg-muted"
-              />
+              <Input id="id" value={currentTopic.id} readOnly disabled className="bg-muted" />
             </div>
           )}
-          
           <div className="space-y-2">
             <Label htmlFor="name">Topic Name</Label>
-            <Input
-              id="name"
-              value={currentTopic.name}
-              onChange={(e) => handleFormChange("name", e.target.value)}
-              placeholder="Enter topic name"
-            />
+            <Input id="name" value={currentTopic.name} onChange={(e) => handleFormChange("name", e.target.value)} placeholder="Enter topic name" />
           </div>
-          
           <div className="space-y-2">
             <Label htmlFor="course">Course</Label>
-            <Select 
-              value={currentTopic.courseId} 
-              onValueChange={(value) => handleFormChange("courseId", value)}
-            >
-              <SelectTrigger id="course">
-                <SelectValue placeholder="Select course" />
-              </SelectTrigger>
+            <Select value={currentTopic.courseId} onValueChange={(value) => handleFormChange("courseId", value)}>
+              <SelectTrigger id="course"><SelectValue placeholder="Select course" /></SelectTrigger>
               <SelectContent>
                 {courses.map((course) => (
-                  <SelectItem key={course.id} value={course.id}>
-                    {course.name}
-                  </SelectItem>
+                  <SelectItem key={course.id} value={course.id}>{course.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
-          
           <div className="space-y-2">
             <Label htmlFor="description">Description</Label>
-            <Textarea
-              id="description"
-              value={currentTopic.description}
-              onChange={(e) => handleFormChange("description", e.target.value)}
-              placeholder="Enter topic description"
-              rows={4}
-            />
+            <Textarea id="description" value={currentTopic.description} onChange={(e) => handleFormChange("description", e.target.value)} placeholder="Enter topic description" rows={4} />
           </div>
-          
           {isEditMode && currentTopic.createdAt && (
             <div className="space-y-2">
               <Label htmlFor="createdAt">Created At</Label>
-              <Input
-                id="createdAt"
-                value={new Date(currentTopic.createdAt).toLocaleDateString()}
-                readOnly
-                disabled
-                className="bg-muted"
-              />
+              <Input id="createdAt" value={new Date(currentTopic.createdAt).toLocaleDateString()} readOnly disabled className="bg-muted" />
             </div>
           )}
         </div>
       </DataFormDrawer>
       
-      {/* Delete Confirmation Dialog */}
       <DeleteConfirmationDialog
         open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
