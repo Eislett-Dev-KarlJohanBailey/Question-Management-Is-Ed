@@ -1,5 +1,5 @@
 
-import { ReactNode, useState } from "react"
+import { ReactNode, useEffect, useState } from "react"
 import {
   Table,
   TableBody,
@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button"
 import { ChevronDown, ChevronUp, ChevronsUpDown } from "lucide-react"
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination"
 import { cn } from "@/lib/utils"
+import { useRouter } from "next/router"
 
 export interface Column<T> {
   id: string
@@ -54,13 +55,49 @@ export function DataTable<T>({
   rowClassName,
   className
 }: DataTableProps<T>) {
+  const router = useRouter()
+  
+  // Initialize pagination from URL
+  useEffect(() => {
+    if (!router.isReady || !pagination) return
+    
+    const pageFromUrl = router.query.page ? parseInt(router.query.page as string, 10) : null
+    if (pageFromUrl && pageFromUrl !== pagination.currentPage && pageFromUrl <= pagination.totalPages) {
+      pagination.onPageChange(pageFromUrl)
+    }
+  }, [router.isReady, router.query, pagination])
+  
   const handleSort = (columnId: string) => {
     if (!onSort) return
     
     const newDirection = 
       sortColumn === columnId && sortDirection === "asc" ? "desc" : "asc"
     
+    // Update URL
+    const query = { 
+      ...router.query, 
+      sortColumn: columnId, 
+      sortDirection: newDirection 
+    }
+    router.push({
+      pathname: router.pathname,
+      query
+    }, undefined, { shallow: true })
+    
     onSort(columnId, newDirection)
+  }
+  
+  const handlePageChange = (page: number) => {
+    if (!pagination) return
+    
+    // Update URL
+    const query = { ...router.query, page: page.toString() }
+    router.push({
+      pathname: router.pathname,
+      query
+    }, undefined, { shallow: true })
+    
+    pagination.onPageChange(page)
   }
   
   const renderSortIcon = (columnId: string) => {
@@ -149,7 +186,7 @@ export function DataTable<T>({
                 onClick={(e) => {
                   e.preventDefault()
                   if (pagination.currentPage > 1) {
-                    pagination.onPageChange(pagination.currentPage - 1)
+                    handlePageChange(pagination.currentPage - 1)
                   }
                 }}
                 className={pagination.currentPage <= 1 ? "pointer-events-none opacity-50" : ""}
@@ -180,7 +217,7 @@ export function DataTable<T>({
                     href="#"
                     onClick={(e) => {
                       e.preventDefault()
-                      pagination.onPageChange(page)
+                      handlePageChange(page)
                     }}
                     isActive={page === pagination.currentPage}
                   >
@@ -196,7 +233,7 @@ export function DataTable<T>({
                 onClick={(e) => {
                   e.preventDefault()
                   if (pagination.currentPage < pagination.totalPages) {
-                    pagination.onPageChange(pagination.currentPage + 1)
+                    handlePageChange(pagination.currentPage + 1)
                   }
                 }}
                 className={pagination.currentPage >= pagination.totalPages ? "pointer-events-none opacity-50" : ""}

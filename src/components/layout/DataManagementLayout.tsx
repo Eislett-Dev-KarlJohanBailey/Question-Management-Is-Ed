@@ -1,5 +1,5 @@
 
-import { ReactNode, useState } from "react"
+import { ReactNode, useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { 
@@ -30,6 +30,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Card } from "@/components/ui/card"
+import { useRouter } from "next/router"
 
 export interface DataManagementLayoutProps {
   title: string
@@ -49,6 +50,8 @@ export interface DataManagementLayoutProps {
   isLoading?: boolean
   onRefresh?: () => void
   className?: string
+  defaultSort?: string
+  defaultShowFilters?: boolean
 }
 
 export function DataManagementLayout({
@@ -65,19 +68,79 @@ export function DataManagementLayout({
   actionButtons,
   isLoading = false,
   onRefresh,
-  className
+  className,
+  defaultSort,
+  defaultShowFilters = false
 }: DataManagementLayoutProps) {
+  const router = useRouter()
   const [searchValue, setSearchValue] = useState("")
-  const [showFilters, setShowFilters] = useState(false)
+  const [showFilters, setShowFilters] = useState(defaultShowFilters)
+  const [currentSort, setCurrentSort] = useState(defaultSort || "")
+  
+  // Initialize from URL query params
+  useEffect(() => {
+    if (!router.isReady) return
+    
+    // Get search from URL
+    const searchFromUrl = router.query.search as string
+    if (searchFromUrl) {
+      setSearchValue(searchFromUrl)
+      onSearch?.(searchFromUrl)
+    }
+    
+    // Get sort from URL
+    const sortFromUrl = router.query.sort as string
+    if (sortFromUrl && sortOptions?.some(option => option.value === sortFromUrl)) {
+      setCurrentSort(sortFromUrl)
+      onSortChange?.(sortFromUrl)
+    }
+    
+    // Get filter visibility from URL
+    const showFiltersFromUrl = router.query.showFilters === "true"
+    setShowFilters(showFiltersFromUrl)
+  }, [router.isReady, router.query, onSearch, onSortChange, sortOptions])
   
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value
     setSearchValue(value)
+    
+    // Update URL
+    const query = { ...router.query, search: value || null }
+    if (!value) delete query.search
+    
+    router.push({
+      pathname: router.pathname,
+      query
+    }, undefined, { shallow: true })
+    
     onSearch?.(value)
   }
   
   const handleSortChange = (value: string) => {
+    setCurrentSort(value)
+    
+    // Update URL
+    const query = { ...router.query, sort: value }
+    router.push({
+      pathname: router.pathname,
+      query
+    }, undefined, { shallow: true })
+    
     onSortChange?.(value)
+  }
+  
+  const handleToggleFilters = () => {
+    const newShowFilters = !showFilters
+    setShowFilters(newShowFilters)
+    
+    // Update URL
+    const query = { ...router.query, showFilters: newShowFilters ? "true" : null }
+    if (!newShowFilters) delete query.showFilters
+    
+    router.push({
+      pathname: router.pathname,
+      query
+    }, undefined, { shallow: true })
   }
   
   const handleRefresh = () => {
@@ -122,7 +185,7 @@ export function DataManagementLayout({
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           {/* Sort Dropdown */}
           {sortOptions && sortOptions.length > 0 && (
-            <Select onValueChange={handleSortChange}>
+            <Select value={currentSort} onValueChange={handleSortChange}>
               <SelectTrigger className="w-[180px] h-9">
                 <SelectValue placeholder="Sort by" />
               </SelectTrigger>
@@ -142,7 +205,7 @@ export function DataManagementLayout({
               variant="outline"
               size="sm"
               className="h-9"
-              onClick={() => setShowFilters(!showFilters)}
+              onClick={handleToggleFilters}
             >
               <Filter className="h-4 w-4 mr-2" />
               Filters

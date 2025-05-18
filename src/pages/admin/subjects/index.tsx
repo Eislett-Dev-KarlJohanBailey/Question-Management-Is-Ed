@@ -1,9 +1,9 @@
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { AdminLayout } from "@/components/layout/AdminLayout"
 import { DataManagementLayout } from "@/components/layout/DataManagementLayout"
 import { DataTable } from "@/components/data/DataTable"
-import { FilterControls } from "@/components/data/FilterControls"
+import { FilterControls, FilterOption } from "@/components/data/FilterControls"
 import { DataFormDrawer } from "@/components/data/DataFormDrawer"
 import { DeleteConfirmationDialog } from "@/components/data/DeleteConfirmationDialog"
 import { Button } from "@/components/ui/button"
@@ -66,13 +66,14 @@ interface SubjectFormData {
 export default function SubjectsPage() {
   const router = useRouter()
   const [subjects, setSubjects] = useState(MOCK_SUBJECTS)
+  const [filteredSubjects, setFilteredSubjects] = useState(MOCK_SUBJECTS)
   const [isLoading, setIsLoading] = useState(false)
+  
+  // URL-synced state
   const [sortColumn, setSortColumn] = useState<string>("name")
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
   const [currentPage, setCurrentPage] = useState(1)
-  const [filters, setFilters] = useState({
-    search: ""
-  })
+  const [searchQuery, setSearchQuery] = useState("")
   
   // Form drawer state
   const [formDrawerOpen, setFormDrawerOpen] = useState(false)
@@ -87,6 +88,78 @@ export default function SubjectsPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [subjectToDelete, setSubjectToDelete] = useState<string | null>(null)
+  
+  // Initialize state from URL on first load
+  useEffect(() => {
+    if (!router.isReady) return
+    
+    // Get sort params from URL
+    const sortColumnFromUrl = router.query.sortColumn as string
+    const sortDirectionFromUrl = router.query.sortDirection as "asc" | "desc"
+    
+    if (sortColumnFromUrl) {
+      setSortColumn(sortColumnFromUrl)
+    }
+    
+    if (sortDirectionFromUrl && (sortDirectionFromUrl === "asc" || sortDirectionFromUrl === "desc")) {
+      setSortDirection(sortDirectionFromUrl)
+    }
+    
+    // Get page from URL
+    const pageFromUrl = router.query.page ? parseInt(router.query.page as string, 10) : 1
+    if (pageFromUrl && !isNaN(pageFromUrl)) {
+      setCurrentPage(pageFromUrl)
+    }
+    
+    // Get search from URL
+    const searchFromUrl = router.query.search as string
+    if (searchFromUrl) {
+      setSearchQuery(searchFromUrl)
+    }
+    
+    // Apply filters based on URL params
+    applyFilters()
+  }, [router.isReady, router.query])
+  
+  // Apply all filters, sorting, and pagination
+  const applyFilters = () => {
+    setIsLoading(true)
+    
+    // Start with all subjects
+    let result = [...subjects]
+    
+    // Apply search filter if present
+    if (searchQuery) {
+      const lowerSearch = searchQuery.toLowerCase()
+      result = result.filter(subject => 
+        subject.name.toLowerCase().includes(lowerSearch) || 
+        subject.description.toLowerCase().includes(lowerSearch)
+      )
+    }
+    
+    // Apply sorting
+    result.sort((a, b) => {
+      let comparison = 0
+      
+      if (sortColumn === "id") {
+        comparison = a.id.localeCompare(b.id)
+      } else if (sortColumn === "name") {
+        comparison = a.name.localeCompare(b.name)
+      } else if (sortColumn === "createdAt") {
+        comparison = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      }
+      
+      return sortDirection === "asc" ? comparison : -comparison
+    })
+    
+    setFilteredSubjects(result)
+    setIsLoading(false)
+  }
+  
+  // Apply filters whenever dependencies change
+  useEffect(() => {
+    applyFilters()
+  }, [subjects, searchQuery, sortColumn, sortDirection])
   
   // Handle form input changes
   const handleFormChange = (field: keyof SubjectFormData, value: string) => {
@@ -182,16 +255,21 @@ export default function SubjectsPage() {
     router.push(`/admin/subjects/${id}`)
   }
   
-  // Simulate searching
+  // Handle search
   const handleSearch = (value: string) => {
-    setFilters({...filters, search: value})
+    setSearchQuery(value)
     setCurrentPage(1)
   }
   
-  // Simulate sorting
+  // Handle sorting
   const handleSort = (column: string, direction: "asc" | "desc") => {
     setSortColumn(column)
     setSortDirection(direction)
+  }
+  
+  // Handle page change
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page)
   }
   
   // Simulate refreshing data
@@ -199,8 +277,18 @@ export default function SubjectsPage() {
     setIsLoading(true)
     // In a real app, you would fetch fresh data from the API
     setTimeout(() => {
+      applyFilters()
       setIsLoading(false)
     }, 500)
+  }
+  
+  // Get paginated data
+  const getPaginatedData = () => {
+    const itemsPerPage = 10
+    const startIndex = (currentPage - 1) * itemsPerPage
+    const endIndex = startIndex + itemsPerPage
+    
+    return filteredSubjects.slice(startIndex, endIndex)
   }
   
   // Table columns configuration
@@ -284,6 +372,11 @@ export default function SubjectsPage() {
     handleSort(column, direction as "asc" | "desc")
   }
   
+  // Get current sort value for dropdown
+  const getCurrentSortValue = () => {
+    return `${sortColumn}_${sortDirection}`
+  }
+  
   return (
     <AdminLayout>
       <DataManagementLayout
@@ -298,9 +391,10 @@ export default function SubjectsPage() {
         isLoading={isLoading}
         onRefresh={handleRefresh}
         className="px-2 sm:px-4"
+        defaultSort={getCurrentSortValue()}
       >
         <DataTable
-          data={subjects}
+          data={getPaginatedData()}
           columns={columns}
           keyExtractor={(item) => item.id}
           onRowClick={(item) => handleViewSubject(item.id)}
@@ -309,8 +403,8 @@ export default function SubjectsPage() {
           onSort={handleSort}
           pagination={{
             currentPage,
-            totalPages: Math.ceil(subjects.length / 10),
-            onPageChange: setCurrentPage
+            totalPages: Math.max(1, Math.ceil(filteredSubjects.length / 10)),
+            onPageChange: handlePageChange
           }}
           emptyState={
             <div className="flex flex-col items-center justify-center py-8">
