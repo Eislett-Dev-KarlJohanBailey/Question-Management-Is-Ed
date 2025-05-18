@@ -21,12 +21,12 @@ import {
   CardHeader,
   CardTitle
 } from "@/components/ui/card"
-import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
-import { X, Plus, ArrowLeft, Trash, GripVertical } from "lucide-react"
+import { X, Plus, ArrowLeft, Trash } from "lucide-react"
 import { QuestionFormData, QuestionType } from "@/lib/types"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Switch } from "@/components/ui/switch"
+import { MarkdownRenderer } from "@/components/ui/markdown-renderer"
 
 // Mock data for demonstration
 const MOCK_SUBTOPICS = [
@@ -256,6 +256,10 @@ export default function CreateQuestionPage() {
   const getSubtopicName = (id: string) => 
     subtopics.find(s => s.id === id)?.name || "Unknown"
 
+  const getPlaceholderContent = () => {
+    return formData.content || "Question content will appear here. You can use LaTeX math: $E = mc^2$ or $$\\frac{d}{dx}\\sin x = \\cos x$$"
+  }
+
   return (
     <AdminLayout>
       <div className="container py-6 space-y-6">
@@ -284,7 +288,7 @@ export default function CreateQuestionPage() {
             <CardHeader>
               <CardTitle>Question Details</CardTitle>
               <CardDescription>
-                Enter the basic information for your question
+                Enter the basic information for your question. You can use LaTeX math formulas with $ or $$ delimiters.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -316,7 +320,7 @@ export default function CreateQuestionPage() {
                   id="content" 
                   value={formData.content} 
                   onChange={(e) => handleInputChange("content", e.target.value)} 
-                  placeholder="Enter the question content"
+                  placeholder="Enter the question content. You can use LaTeX math: $E = mc^2$ or $$\frac{d}{dx}\sin x = \cos x$$"
                   rows={4}
                   required
                 />
@@ -523,7 +527,10 @@ export default function CreateQuestionPage() {
                 <TabsContent value="question" className="p-4 border rounded-md mt-4">
                   <div className="space-y-4">
                     <div>
-                      <h3 className="font-semibold text-lg">{formData.content || "Question content will appear here"}</h3>
+                      <MarkdownRenderer 
+                        content={getPlaceholderContent()} 
+                        className="font-semibold text-lg"
+                      />
                     </div>
                     
                     <div className="space-y-2">
@@ -534,7 +541,9 @@ export default function CreateQuestionPage() {
                               {String.fromCharCode(65 + index)}
                             </div>
                           ) : null}
-                          <span>{option.content || `Option ${index + 1} will appear here`}</span>
+                          <MarkdownRenderer 
+                            content={option.content || `Option ${index + 1} will appear here`}
+                          />
                         </div>
                       ))}
                     </div>
