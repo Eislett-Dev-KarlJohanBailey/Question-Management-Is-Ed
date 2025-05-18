@@ -76,6 +76,7 @@ export function DataManagementLayout({
   const [searchValue, setSearchValue] = useState("")
   const [showFilters, setShowFilters] = useState(defaultShowFilters)
   const [currentSort, setCurrentSort] = useState(defaultSort || "")
+  const [isInitialized, setIsInitialized] = useState(false)
   
   // Initialize from URL query params
   useEffect(() => {
@@ -83,37 +84,57 @@ export function DataManagementLayout({
     
     // Get search from URL
     const searchFromUrl = router.query.search as string
-    if (searchFromUrl) {
+    if (searchFromUrl !== undefined) {
       setSearchValue(searchFromUrl)
-      onSearch?.(searchFromUrl)
+      if (!isInitialized) {
+        onSearch?.(searchFromUrl)
+      }
+    } else if (isInitialized && searchValue) {
+      // Clear search value if it's not in URL
+      setSearchValue("")
     }
     
     // Get sort from URL
     const sortFromUrl = router.query.sort as string
     if (sortFromUrl && sortOptions?.some(option => option.value === sortFromUrl)) {
       setCurrentSort(sortFromUrl)
-      onSortChange?.(sortFromUrl)
+      if (!isInitialized) {
+        onSortChange?.(sortFromUrl)
+      }
     }
     
     // Get filter visibility from URL
     const showFiltersFromUrl = router.query.showFilters === "true"
     setShowFilters(showFiltersFromUrl)
-  }, [router.isReady, router.query, onSearch, onSortChange, sortOptions])
+    
+    if (!isInitialized) {
+      setIsInitialized(true)
+    }
+  }, [router.isReady, router.query, onSearch, onSortChange, sortOptions, isInitialized, searchValue])
   
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value
     setSearchValue(value)
     
-    // Update URL
-    const query = { ...router.query, search: value || null }
-    if (!value) delete query.search
+    // Debounce URL update to prevent excessive URL changes while typing
+    const timeoutId = setTimeout(() => {
+      // Update URL
+      const query = { ...router.query }
+      if (value) {
+        query.search = value
+      } else {
+        delete query.search
+      }
+      
+      router.push({
+        pathname: router.pathname,
+        query
+      }, undefined, { shallow: true })
+      
+      onSearch?.(value)
+    }, 300)
     
-    router.push({
-      pathname: router.pathname,
-      query
-    }, undefined, { shallow: true })
-    
-    onSearch?.(value)
+    return () => clearTimeout(timeoutId)
   }
   
   const handleSortChange = (value: string) => {
