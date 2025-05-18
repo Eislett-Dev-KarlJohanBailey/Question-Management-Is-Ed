@@ -1,5 +1,7 @@
 
+import { useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/router"
 import { cn } from "@/lib/utils"
 import {
   LayoutDashboard,
@@ -12,7 +14,9 @@ import {
   Layers,
   Globe,
   Building,
-  BookText
+  BookText,
+  FileQuestion,
+  ChevronDown
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
@@ -22,6 +26,21 @@ interface AdminSidebarProps {
 }
 
 export function AdminSidebar({ isOpen, onOpenChange }: AdminSidebarProps) {
+  const router = useRouter()
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+    topics: router.pathname.includes("/admin/topics")
+  })
+
+  const toggleSection = (section: string) => {
+    setExpandedSections(prev => ({
+      ...prev,
+      [section]: !prev[section]
+    }))
+  }
+
+  const isActive = (path: string) => router.pathname === path
+  const isInPath = (path: string) => router.pathname.startsWith(path)
+
   const menuItems = [
     {
       title: "Dashboard",
@@ -41,7 +60,18 @@ export function AdminSidebar({ isOpen, onOpenChange }: AdminSidebarProps) {
     {
       title: "Topics",
       icon: Layers,
-      href: "/admin/topics"
+      href: "/admin/topics",
+      submenu: [
+        {
+          title: "Subtopics",
+          href: "/admin/topics/subtopics"
+        },
+        {
+          title: "Questions",
+          icon: FileQuestion,
+          href: "/admin/topics/subtopics/questions"
+        }
+      ]
     },
     {
       title: "Countries",
@@ -96,21 +126,78 @@ export function AdminSidebar({ isOpen, onOpenChange }: AdminSidebarProps) {
             )}
           </Button>
         </div>
-        <nav className="flex-1 space-y-1 p-2">
+        <nav className="flex-1 space-y-1 p-2 overflow-y-auto">
           {menuItems.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-                !isOpen && "lg:justify-center"
+            <div key={item.href}>
+              {item.submenu ? (
+                <>
+                  <Button
+                    variant="ghost"
+                    className={cn(
+                      "w-full justify-between px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                      !isOpen && "lg:justify-center",
+                      isInPath(item.href) && "bg-accent text-accent-foreground"
+                    )}
+                    onClick={() => toggleSection(item.title.toLowerCase())}
+                  >
+                    <div className="flex items-center gap-3">
+                      <item.icon className="h-5 w-5" />
+                      <span className={cn("text-sm font-medium", !isOpen && "lg:hidden")}>
+                        {item.title}
+                      </span>
+                    </div>
+                    {isOpen && (
+                      <ChevronDown
+                        className={cn(
+                          "h-4 w-4 transition-transform",
+                          expandedSections[item.title.toLowerCase()] && "rotate-180"
+                        )}
+                      />
+                    )}
+                  </Button>
+                  {expandedSections[item.title.toLowerCase()] && isOpen && (
+                    <div className="ml-6 mt-1 space-y-1 border-l pl-2">
+                      <Link
+                        href={item.href}
+                        className={cn(
+                          "flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                          isActive(item.href) && "bg-accent/50 text-accent-foreground"
+                        )}
+                      >
+                        All {item.title}
+                      </Link>
+                      {item.submenu.map((subitem) => (
+                        <Link
+                          key={subitem.href}
+                          href={subitem.href}
+                          className={cn(
+                            "flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                            isInPath(subitem.href) && "bg-accent/50 text-accent-foreground"
+                          )}
+                        >
+                          {subitem.icon && <subitem.icon className="h-4 w-4" />}
+                          {subitem.title}
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <Link
+                  href={item.href}
+                  className={cn(
+                    "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                    !isOpen && "lg:justify-center",
+                    isActive(item.href) && "bg-accent text-accent-foreground"
+                  )}
+                >
+                  <item.icon className="h-5 w-5" />
+                  <span className={cn("text-sm font-medium", !isOpen && "lg:hidden")}>
+                    {item.title}
+                  </span>
+                </Link>
               )}
-            >
-              <item.icon className="h-5 w-5" />
-              <span className={cn("text-sm font-medium", !isOpen && "lg:hidden")}>
-                {item.title}
-              </span>
-            </Link>
+            </div>
           ))}
         </nav>
       </div>
