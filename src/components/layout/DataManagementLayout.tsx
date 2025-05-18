@@ -32,7 +32,7 @@ export interface DataManagementLayoutProps {
   className?: string
   defaultSort?: string
   defaultShowFilters?: boolean
-  secondaryActions?: React.ReactNode // Added this prop
+  secondaryActions?: React.ReactNode
 }
 
 export function DataManagementLayout({
@@ -61,6 +61,7 @@ export function DataManagementLayout({
 
   const [internalSortValue, setInternalSortValue] = useState(defaultSort || (sortOptions && sortOptions.length > 0 ? sortOptions[0].value : ""))
   const [showFilters, setShowFilters] = useState(defaultShowFilters)
+  const [isSheetOpen, setIsSheetOpen] = useState(false)
 
   useEffect(() => {
     if (router.isReady) {
@@ -74,15 +75,15 @@ export function DataManagementLayout({
         setInternalSortValue(querySort)
       }
       
-      if(router.query.showFilters === "true") {
-        setShowFilters(true)
-      } else if (router.query.showFilters === "false") {
-        setShowFilters(false)
-      } else {
-        setShowFilters(defaultShowFilters)
+      const showFiltersValue = router.query.showFilters === "true"
+      setShowFilters(showFiltersValue)
+      
+      // Only set sheet open if on mobile and filters should be shown
+      if (isMobile && showFiltersValue) {
+        setIsSheetOpen(true)
       }
     }
-  }, [router.isReady, router.query, defaultSort, sortOptions, internalSearchQuery, internalSortValue, defaultShowFilters])
+  }, [router.isReady, router.query, defaultSort, sortOptions, internalSearchQuery, internalSortValue, defaultShowFilters, isMobile])
 
   useEffect(() => {
     if (onSearch) {
@@ -123,15 +124,29 @@ export function DataManagementLayout({
   const toggleFilters = () => {
     const newShowFilters = !showFilters
     setShowFilters(newShowFilters)
+    
+    // For mobile, also control the sheet state
+    if (isMobile) {
+      setIsSheetOpen(newShowFilters)
+    }
+    
     router.push({ pathname: router.pathname, query: { ...router.query, showFilters: newShowFilters.toString() } }, undefined, { shallow: true })
+  }
+  
+  const handleSheetOpenChange = (open: boolean) => {
+    setIsSheetOpen(open)
+    
+    // Only update showFilters and URL if the sheet state actually changed
+    if (showFilters !== open) {
+      setShowFilters(open)
+      router.push({ pathname: router.pathname, query: { ...router.query, showFilters: open.toString() } }, undefined, { shallow: true })
+    }
   }
   
   const FilterControlsWrapper = ({ children }: { children: React.ReactNode }) => {
     if (isMobile) {
       return (
-        <Sheet open={showFilters} onOpenChange={(open) => {
-          if (!open) toggleFilters() // Close if sheet is dismissed
-        }}>
+        <Sheet open={isSheetOpen} onOpenChange={handleSheetOpenChange}>
           <SheetTrigger asChild>
             <Button variant="outline" className="ml-2">
               <SlidersHorizontal className="mr-2 h-4 w-4" />
@@ -232,7 +247,7 @@ export function DataManagementLayout({
         </div>
         
         {isMobile ? (
-          showFilters && filterControls && (
+          showFilters && filterControls && !isSheetOpen && (
             <div className="block md:hidden mt-4 p-4 border rounded-md bg-card">
               {/* Filters are in Sheet for mobile, this space can be used for other mobile-specific controls or left empty */}
             </div>
