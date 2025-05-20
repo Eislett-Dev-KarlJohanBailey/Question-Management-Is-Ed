@@ -28,12 +28,17 @@ const defaultSettings: ThemeSettings = {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined)
 
+// Check if we're in a browser environment
+const isBrowser = typeof window !== "undefined"
+
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [settings, setSettings] = useState<ThemeSettings>(defaultSettings)
   const [loaded, setLoaded] = useState(false)
 
-  // Load settings from localStorage on mount
+  // Load settings from localStorage on mount (only in browser)
   useEffect(() => {
+    if (!isBrowser) return
+
     const savedSettings = localStorage.getItem("theme-settings")
     if (savedSettings) {
       try {
@@ -46,9 +51,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     setLoaded(true)
   }, [])
 
-  // Apply theme when settings change
+  // Apply theme when settings change (only in browser)
   useEffect(() => {
-    if (!loaded) return
+    if (!isBrowser || !loaded) return
 
     // Save to localStorage
     localStorage.setItem("theme-settings", JSON.stringify(settings))
