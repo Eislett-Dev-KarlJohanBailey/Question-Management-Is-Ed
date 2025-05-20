@@ -1,10 +1,16 @@
 
 import { useState } from "react"
+import dynamic from "next/dynamic"
 import { AdminLayout } from "@/components/layout/AdminLayout"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { AppearanceSettings } from "@/components/settings/AppearanceSettings"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Palette, Bell, Shield, Globe } from "lucide-react"
+
+// Import AppearanceSettings with SSR disabled
+const AppearanceSettings = dynamic(
+  () => import("@/components/settings/AppearanceSettings").then(mod => mod.AppearanceSettings),
+  { ssr: false }
+)
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState("appearance")
