@@ -1,5 +1,5 @@
 
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback, useContext } from "react"
 import { AdminLayout } from "@/components/layout/AdminLayout"
 import { DataManagementLayout } from "@/components/layout/DataManagementLayout"
 import { DataTable } from "@/components/data/DataTable"
@@ -25,6 +25,7 @@ import {
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Question, QuestionType } from "@/lib/types"
+import { useAuth } from "@/contexts/AuthContext"
 
 // Mock data for demonstration
 const MOCK_SUBTOPICS = [
@@ -138,6 +139,7 @@ const MOCK_QUESTIONS: Question[] = [
 
 export default function QuestionsPage() {
   const router = useRouter()
+  const authContext = useContext(useAuth())
   const [questions, setQuestions] = useState<Question[]>(MOCK_QUESTIONS)
   const [filteredQuestions, setFilteredQuestions] = useState<Question[]>(MOCK_QUESTIONS)
   const [subtopics, setSubtopics] = useState(MOCK_SUBTOPICS)
@@ -198,6 +200,18 @@ export default function QuestionsPage() {
       }
       return sortDirection === "asc" ? comparison : -comparison
     })
+
+    // const rawResponse = await fetch('/api/questions?page_number=1&page_size=5',
+    //     {
+    //       method: 'GET',
+    //       headers: {
+    //         'Accept': 'application/json, text/plain, */*',
+    //         'Content-Type': 'application/json',
+    //         "Authorization" : `Bearer ${authContext.token}`
+    //       },
+
+    //     }
+    //   );
     
     setFilteredQuestions(result)
     setIsLoading(false)
