@@ -1,5 +1,5 @@
 
-import { useEffect, useState, useCallback, useContext } from "react"
+import { useEffect, useState, useCallback, useContext, useMemo } from "react"
 import { AdminLayout } from "@/components/layout/AdminLayout"
 import { DataManagementLayout } from "@/components/layout/DataManagementLayout"
 import { DataTable } from "@/components/data/DataTable"
@@ -24,181 +24,95 @@ import {
 } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { Question, QuestionType } from "@/lib/types"
+// import { Question, QuestionType } from "@/lib/types"
 import { useAuth } from "@/contexts/AuthContext"
+import { useDebouncedCallback } from 'use-debounce';
+import { useAppDispatch, useAppSelector } from "@/store/hook"
+import { getFilteredQuestions, getQuestionAmt, getQuestionReqParams, getQuestions, getQuestionsIsLoading, getQuestionSubtopics, getQuestionTableDeleteData, getQuestionTableFilters, setFilteredQuestions, setQuestionAmount, setQuestionReqParams, setQuestions, setQuestionsIsLoading, setQuestionSubtopics, setQuestionTableDeleteData, setQuestionTableFilters } from "./slices/questions.slice"
+import { DEFAULT_PAGE_NUMBER } from "@/constants/tablePageSizes"
+import { handleDeleteQuestion, handleFetchQuestions } from "../../../../../services/questions/questionsRequest"
+import { toast } from "@/hooks/use-toast"
+import { handleFetchSubTopics } from "@/services/subtopics/subTopicsRequest"
+import { QuestionDetails } from "@/models/questions/questionDetails"
+import { QuestionType } from "@/lib/types"
+import { removeNulls } from "@/services/utils"
 
-// Mock data for demonstration
-const MOCK_SUBTOPICS = [
-  { 
-    id: "1", 
-    name: "Epsilon-Delta Definition", 
-    description: "Formal definition of limits using epsilon-delta notation",
-    topicId: "1",
-    createdAt: "2025-01-16"
-  },
-  { 
-    id: "2", 
-    name: "Limit Laws", 
-    description: "Properties and rules for calculating limits",
-    topicId: "1",
-    createdAt: "2025-01-17"
-  },
-  { 
-    id: "3", 
-    name: "First Law of Motion", 
-    description: "An object at rest stays at rest, and an object in motion stays in motion",
-    topicId: "2",
-    createdAt: "2025-02-11"
-  },
-  { 
-    id: "4", 
-    name: "Second Law of Motion", 
-    description: "Force equals mass times acceleration (F = ma)",
-    topicId: "2",
-    createdAt: "2025-02-12"
-  },
-  { 
-    id: "5", 
-    name: "Character Analysis", 
-    description: "In-depth study of Hamlet's character and motivations",
-    topicId: "3",
-    createdAt: "2025-03-06"
-  }
-]
 
-const MOCK_QUESTIONS: Question[] = [
-  {
-    id: "1",
-    title: "Understanding Limits",
-    description: "Test your understanding of limits in calculus",
-    content: "What is the limit of f(x) = (x^2 - 1)/(x - 1) as x approaches 1?",
-    tags: ["calculus", "limits"],
-    createdAt: "2025-01-20",
-    type: QuestionType.MULTIPLE_CHOICE,
-    totalPotentialMarks: 2,
-    difficultyLevel: 0.6,
-    subtopicId: "1",
-    options: [
-      { id: "1", content: "0", isCorrect: false },
-      { id: "2", content: "1", isCorrect: false },
-      { id: "3", content: "2", isCorrect: true },
-      { id: "4", content: "Undefined", isCorrect: false }
-    ]
-  },
-  {
-    id: "2",
-    title: "Limit Laws Application",
-    description: "Apply limit laws to solve problems",
-    content: "If lim(x→0) f(x) = 3 and lim(x→0) g(x) = 2, what is lim(x→0) [f(x) + g(x)]?",
-    tags: ["calculus", "limit laws"],
-    createdAt: "2025-01-22",
-    type: QuestionType.MULTIPLE_CHOICE,
-    totalPotentialMarks: 1,
-    difficultyLevel: 0.3,
-    subtopicId: "2",
-    options: [
-      { id: "1", content: "1", isCorrect: false },
-      { id: "2", content: "5", isCorrect: true },
-      { id: "3", content: "6", isCorrect: false },
-      { id: "4", content: "0", isCorrect: false }
-    ]
-  },
-  {
-    id: "3",
-    title: "Newton's First Law",
-    description: "Understanding inertia",
-    content: "An object in motion stays in motion with the same speed and direction unless acted upon by an unbalanced force.",
-    tags: ["physics", "newton"],
-    createdAt: "2025-02-15",
-    type: QuestionType.TRUE_FALSE,
-    totalPotentialMarks: 1,
-    difficultyLevel: 0.2,
-    subtopicId: "3",
-    options: [
-      { id: "1", content: "True", isCorrect: true },
-      { id: "2", content: "False", isCorrect: false }
-    ]
-  },
-  {
-    id: "4",
-    title: "Force and Acceleration",
-    description: "Understanding F=ma",
-    content: "According to Newton's Second Law, if the mass of an object is doubled while the force remains constant, the acceleration will be halved.",
-    tags: ["physics", "newton", "acceleration"],
-    createdAt: "2025-02-18",
-    type: QuestionType.TRUE_FALSE,
-    totalPotentialMarks: 1,
-    difficultyLevel: 0.4,
-    subtopicId: "4",
-    options: [
-      { id: "1", content: "True", isCorrect: true },
-      { id: "2", content: "False", isCorrect: false }
-    ]
-  }
-]
 
 export default function QuestionsPage() {
   const router = useRouter()
+  const dispatch = useAppDispatch();
   const authContext = useContext(useAuth())
-  const [questions, setQuestions] = useState<Question[]>(MOCK_QUESTIONS)
-  const [filteredQuestions, setFilteredQuestions] = useState<Question[]>(MOCK_QUESTIONS)
-  const [subtopics, setSubtopics] = useState(MOCK_SUBTOPICS)
-  const [isLoading, setIsLoading] = useState(false)
-  
+
+  const questionReqParams = useAppSelector(getQuestionReqParams);
+  const totalQuestionAmt = useAppSelector(getQuestionAmt);
+  const filters = useAppSelector(getQuestionTableFilters);
+  const deleteData = useAppSelector(getQuestionTableDeleteData);
+  const isLoading = useAppSelector(getQuestionsIsLoading);
+
+  const questions = useAppSelector(getQuestions);
+  const filteredQuestions = useAppSelector(getFilteredQuestions);
+  const subtopics = useAppSelector(getQuestionSubtopics);
+
+  // const [questions, setQuestions] = useState([]); //useState<Question[]>(MOCK_QUESTIONS)
+  // const [filteredQuestions, setFilteredQuestions] = useState([]); //useState<Question[]>(MOCK_QUESTIONS)
+  // const [subtopics, setSubtopics] = useState([]); // useState(MOCK_SUBTOPICS)
+
   // URL-synced state
-  const [sortColumn, setSortColumn] = useState<string>("title")
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
-  const [currentPage, setCurrentPage] = useState(1)
-  const [searchQuery, setSearchQuery] = useState("")
-  const [subtopicFilter, setSubtopicFilter] = useState<string>("")
-  const [typeFilter, setTypeFilter] = useState<string>("")
-  
+  // const [sortColumn, setSortColumn] = useState<string>("title")
+  // const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
+  // const [currentPage, setCurrentPage] = useState(1)
+  // const [searchQuery, setSearchQuery] = useState("")
+  // const [subtopicFilter, setSubtopicFilter] = useState<string>("")
+  // const [typeFilter, setTypeFilter] = useState<string>("")
+
   // Delete dialog state
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [isDeleting, setIsDeleting] = useState(false)
-  const [questionToDelete, setQuestionToDelete] = useState<string | null>(null)
-  
+  // const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  // const [isDeleting, setIsDeleting] = useState(false)
+  // const [questionToDelete, setQuestionToDelete] = useState<string | null>(null)
+
   // Apply all filters, sorting, and pagination
   const applyFilters = useCallback(() => {
-    setIsLoading(true)
-    
+    console.log('Applying filters', filters)
+    dispatch(setQuestionsIsLoading(true))
+
     let result = [...questions]
-    
-    if (searchQuery) {
-      const lowerSearch = searchQuery.toLowerCase()
-      result = result.filter(question => 
-        question.title.toLowerCase().includes(lowerSearch) || 
-        question.description?.toLowerCase().includes(lowerSearch) ||
-        question.content.toLowerCase().includes(lowerSearch) ||
-        question.tags.some(tag => tag.toLowerCase().includes(lowerSearch))
-      )
+
+    // if (searchQuery) {
+    //   const lowerSearch = searchQuery.toLowerCase()
+    //   result = result.filter(question => 
+    //     question.title.toLowerCase().includes(lowerSearch) || 
+    //     question.description?.toLowerCase().includes(lowerSearch) ||
+    //     question.content.toLowerCase().includes(lowerSearch) ||
+    //     question.tags.some(tag => tag.toLowerCase().includes(lowerSearch))
+    //   )
+    // }
+
+    if (filters.subtopicFilter) {
+      result = result.filter(question => question.subTopics.map(el => el.id).includes(Number(filters.subtopicFilter)))
     }
-    
-    if (subtopicFilter) {
-      result = result.filter(question => question.subtopicId === subtopicFilter)
+
+    if (filters.typeFilter) {
+      result = result.filter(question => question.type === filters.typeFilter)
     }
-    
-    if (typeFilter) {
-      result = result.filter(question => question.type === typeFilter)
-    }
-    
+
     result.sort((a, b) => {
       let comparison = 0
-      const valA = a[sortColumn as keyof Question]
-      const valB = b[sortColumn as keyof Question]
+      const valA = a[filters.sortColumn as keyof QuestionDetails]
+      const valB = b[filters.sortColumn as keyof QuestionDetails]
 
-      if (sortColumn === "subtopic") {
-        const subtopicA = subtopics.find(s => s.id === a.subtopicId)?.name || ""
-        const subtopicB = subtopics.find(s => s.id === b.subtopicId)?.name || ""
+      if (filters.sortColumn === "subtopic") {
+        const subtopicA = subtopics.find(s => a.subTopics.map(el => el.id).includes(s.id))?.name || ""
+        const subtopicB = subtopics.find(s => b.subTopics.map(el => el.id).includes(s.id))?.name || ""
         comparison = subtopicA.localeCompare(subtopicB)
       } else if (typeof valA === "string" && typeof valB === "string") {
         comparison = valA.localeCompare(valB)
       } else if (typeof valA === "number" && typeof valB === "number") {
         comparison = valA - valB
-      } else if (sortColumn === "createdAt") {
+      } else if (filters.sortColumn === "createdAt") {
         comparison = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
       }
-      return sortDirection === "asc" ? comparison : -comparison
+      return filters.sortDirection === "asc" ? comparison : -comparison
     })
 
     // const rawResponse = await fetch('/api/questions?page_number=1&page_size=5',
@@ -212,210 +126,294 @@ export default function QuestionsPage() {
 
     //     }
     //   );
-    
-    setFilteredQuestions(result)
-    setIsLoading(false)
-  }, [questions, searchQuery, subtopicFilter, typeFilter, sortColumn, sortDirection, subtopics])
+
+    console.log('Filtered Data', result)
+    dispatch(setFilteredQuestions(result))
+    setTimeout(() => {
+      dispatch(setQuestionsIsLoading(false))
+    }, 1000)
+  }, [dispatch, filters, questions, subtopics])
+
+
+  // const handleRefresh = useCallback(() => {
+  //   applyFilters()
+  // }, [applyFilters])
 
   // Initialize state from URL on first load
   useEffect(() => {
     if (!router.isReady) return
+
+    const pageFromUrl = router.query.page ? parseInt(router.query.page as string, 10) : DEFAULT_PAGE_NUMBER
+    if (!isNaN(pageFromUrl)) dispatch(setQuestionReqParams({ page_number: pageFromUrl }))
+    
+    const searchFromUrl = router.query.search as string
+    // if (searchFromUrl) dispatch(setQuestionReqParams({ title: searchFromUrl }));
+
+    const reqParams = {
+      title: searchFromUrl && searchFromUrl?.length > 0 ? searchFromUrl : undefined,
+      page_number: !isNaN(pageFromUrl) ? pageFromUrl : undefined
+    }
+    removeNulls(reqParams);
+    dispatch(setQuestionReqParams(reqParams))
+
     
     const sortColumnFromUrl = router.query.sortColumn as string
     const sortDirectionFromUrl = router.query.sortDirection as "asc" | "desc"
-    if (sortColumnFromUrl) setSortColumn(sortColumnFromUrl)
-    if (sortDirectionFromUrl && ["asc", "desc"].includes(sortDirectionFromUrl)) setSortDirection(sortDirectionFromUrl)
-    
-    const pageFromUrl = router.query.page ? parseInt(router.query.page as string, 10) : 1
-    if (!isNaN(pageFromUrl)) setCurrentPage(pageFromUrl)
-    
-    const searchFromUrl = router.query.search as string
-    if (searchFromUrl) setSearchQuery(searchFromUrl)
-    
+    // if (sortColumnFromUrl) dispatch(setQuestionTableFilters({ sortColumn: sortColumnFromUrl }))
+    // if (sortDirectionFromUrl && ["asc", "desc"].includes(sortDirectionFromUrl)) dispatch(setQuestionTableFilters({ sortDirection: sortDirectionFromUrl }))
+
     const subtopicFilterFromUrl = router.query.subtopic as string
-    if (subtopicFilterFromUrl) setSubtopicFilter(subtopicFilterFromUrl)
-    
+    // if (subtopicFilterFromUrl) dispatch(setQuestionTableFilters({ subtopicFilter: subtopicFilterFromUrl }))
+
     const typeFilterFromUrl = router.query.type as string
-    if (typeFilterFromUrl) setTypeFilter(typeFilterFromUrl)
+    // if (typeFilterFromUrl) 
+    //   dispatch(setQuestionTableFilters({ typeFilter: typeFilterFromUrl }))
     
-    applyFilters()
-  }, [router.isReady, router.query, applyFilters])
-  
+    const filterParams = { 
+      typeFilter: typeFilterFromUrl,
+      sortColumn: sortColumnFromUrl ,
+      sortDirection: sortDirectionFromUrl && ["asc", "desc"].includes(sortDirectionFromUrl) ? sortDirectionFromUrl : undefined,
+      subtopicFilter: subtopicFilterFromUrl ,
+     }
+    dispatch(setQuestionTableFilters(filterParams))
+
+    // applyFilters()
+  }, [router.isReady, router.query, dispatch])
+
   // Apply filters whenever dependencies change
+  // useEffect(() => {
+  //   applyFilters()
+  // }, [questions, applyFilters])
+
+  //GET LIST OF QUESTIONS 
   useEffect(() => {
-    applyFilters()
-  }, [questions, searchQuery, subtopicFilter, typeFilter, sortColumn, sortDirection, applyFilters])
-  
-  const handleAddNew = () => {
+    console.log('Fetching questions');
+    async function getQuestions() {
+      dispatch(setQuestionsIsLoading(true))
+      const results = await handleFetchQuestions(questionReqParams?.page_number, questionReqParams?.page_size, questionReqParams?.title, questionReqParams?.sub_topic_id)
+
+      if ((results as { error: string })?.error) {
+        toast({ title: (results as { error: string })?.error, style: { background: 'red', color: 'white' }, duration: 3500 })
+
+        dispatch(setQuestions([]))
+      }
+
+      else {
+        dispatch(setQuestions(results.data ?? []));
+      }
+
+      dispatch(setQuestionAmount(results.amount ?? 0))
+      dispatch(setQuestionsIsLoading(false));
+    }
+
+    getQuestions()
+  }, [questionReqParams?.page_number, questionReqParams?.page_size, questionReqParams?.title, questionReqParams?.sub_topic_id, dispatch])
+
+  //  GET LIST OF SUB TOPICS
+  useEffect(() => {
+    console.log('Fetching sub topics');
+    async function getSubTopics() {
+      const topic_id = undefined
+      const results = await handleFetchSubTopics(1, 50, topic_id)
+
+      if ((results as { error: string })?.error) {
+        toast({ title: (results as { error: string })?.error, style: { background: 'red', color: 'white' }, duration: 3500 })
+        dispatch(setQuestionSubtopics([]));
+      }
+
+      else {
+        dispatch(setQuestionSubtopics(results.data ?? []));
+      }
+
+    }
+
+    getSubTopics()
+  }, [dispatch])
+
+  const handleAddNew = useCallback(() => {
     router.push({
       pathname: "/admin/topics/subtopics/questions/create",
       query: { subtopic: router.query.subtopic }
     })
-  }
-  
-  const handleEdit = (id: string) => {
+  }, [router])
+
+  const handleEdit = useCallback((id: number | string) => {
     router.push(`/admin/topics/subtopics/questions/edit/${id}`)
-  }
-  
-  const handleDeleteClick = (id: string) => {
-    setQuestionToDelete(id)
-    setDeleteDialogOpen(true)
-  }
-  
-  const handleDeleteConfirm = () => {
-    if (!questionToDelete) return
-    setIsDeleting(true)
+  }, [router])
+
+  const handleDeleteClick = useCallback((id: number) => {
+    // setQuestionToDelete(id)
+    // setDeleteDialogOpen(true)
+    dispatch(setQuestionTableDeleteData({ questionId: id, showDeleteDialog: true, isDeleting: false }))
+  }, [dispatch])
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteData.questionId) return
+    dispatch(setQuestionTableDeleteData({ questionId: deleteData.questionId, showDeleteDialog: true, isDeleting: true }))
+
+    const result = await handleDeleteQuestion(deleteData.questionId)
+
+
     setTimeout(() => {
-      setQuestions(questions.filter(question => question.id !== questionToDelete))
-      setIsDeleting(false)
-      setDeleteDialogOpen(false)
-      setQuestionToDelete(null)
+      // setQuestions(questions.filter(question => question.id !== questionToDelete))
+      dispatch(setQuestionTableDeleteData({ questionId: undefined, showDeleteDialog: false, isDeleting: false }))
+
     }, 1000)
   }
-  
-  const handleViewQuestion = (id: string) => {
+
+  const handleViewQuestion = useCallback((id: number | string) => {
     router.push(`/admin/topics/subtopics/questions/${id}`)
-  }
-  
-  const handleSearch = (value: string) => {
-    setSearchQuery(value)
-    setCurrentPage(1)
-  }
-  
-  const handleSubtopicFilterChange = (value: string) => {
-    setSubtopicFilter(value)
-    setCurrentPage(1)
+  }, [router])
+
+  const handleSearch = useDebouncedCallback((value: string) => {
+    dispatch(setQuestionReqParams({ title: value, page_number: 1 })); // triggers apply filter
+  }, 1000)
+
+  const handleSubtopicFilterChange = useCallback((value: string) => {
+    dispatch(setQuestionTableFilters({ subtopicFilter: value }))
+    dispatch(setQuestionReqParams({ page_number: 1 , sub_topic_id : value})) //triggers the apply filter
+    
+    
+    // update url 
     const query = { ...router.query, subtopic: value || undefined, page: "1" }
     if (!value) delete query.subtopic
     router.push({ pathname: router.pathname, query }, undefined, { shallow: true })
-  }
-  
-  const handleTypeFilterChange = (value: string) => {
-    setTypeFilter(value)
-    setCurrentPage(1)
+  }, [dispatch, router])
+
+  const handleTypeFilterChange = useCallback((value: string) => {
+    dispatch(setQuestionTableFilters({ typeFilter: value }))
+    dispatch(setQuestionReqParams({ page_number: 1 }))
+    
+    setTimeout( applyFilters , 800 );
+    
+    // update url
     const query = { ...router.query, type: value || undefined, page: "1" }
     if (!value) delete query.type
     router.push({ pathname: router.pathname, query }, undefined, { shallow: true })
-  }
-  
-  const handleSort = (column: string, direction: "asc" | "desc") => {
-    setSortColumn(column)
-    setSortDirection(direction)
-    router.push({ 
-      pathname: router.pathname, 
-      query: { ...router.query, sortColumn: column, sortDirection: direction } 
-    }, undefined, { shallow: true })
-  }
-  
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page)
-    router.push({ 
-      pathname: router.pathname, 
-      query: { ...router.query, page: page.toString() } 
-    }, undefined, { shallow: true })
-  }
-  
-  const handleRefresh = () => {
-    setIsLoading(true)
-    setTimeout(() => {
-      applyFilters()
-      setIsLoading(false)
-    }, 500)
-  }
-  
-  const getPaginatedData = () => {
-    const itemsPerPage = 10
-    const startIndex = (currentPage - 1) * itemsPerPage
-    return filteredQuestions.slice(startIndex, startIndex + itemsPerPage)
-  }
-  
-  const getSubtopicName = (subtopicId: string) => 
-    subtopics.find(subtopic => subtopic.id === subtopicId)?.name || "Unknown"
-  
-  const filterOptions = [
+  }, [applyFilters, dispatch, router])
+
+  const handleSort = useCallback((column: string, direction: "asc" | "desc") => {
+    dispatch(setQuestionTableFilters({ sortColumn: column, sortDirection: direction }))
+    
+    setTimeout( applyFilters , 800 );
+    
+    // router.push({ 
+    //   pathname: router.pathname, 
+    //   query: { ...router.query, sortColumn: column, sortDirection: direction } 
+    // }, undefined, { shallow: true })
+  }, [dispatch, applyFilters])
+
+  const handlePageChange = useCallback((page: number) => {
+    dispatch(setQuestionReqParams({ page_number: page }))
+    // router.push({ 
+    //   pathname: router.pathname, 
+    //   query: { ...router.query, page: page.toString() } 
+    // }, undefined, { shallow: true })
+    // applyFilters()
+  }, [dispatch])
+
+
+  // const getPaginatedData = () => {
+  //   const itemsPerPage = 10
+  //   const startIndex = (currentPage - 1) * itemsPerPage
+  //   return filteredQuestions.slice(startIndex, startIndex + itemsPerPage)
+  // }
+  const getPaginatedData = useMemo(() => {
+    
+    if (filteredQuestions?.length > 0)
+      return filteredQuestions;
+
+    return questions;
+  }, [filteredQuestions, questions]);
+
+  const getSubtopicName = useCallback((subtopicId: string) =>
+    subtopics.find(subtopic => subtopic.id === Number(subtopicId))?.name || "Unknown"
+  ,[subtopics])
+
+  const filterOptions = useMemo(() => [
     {
       id: "subtopic",
       label: "Subtopic",
       type: "select" as const,
-      value: subtopicFilter,
+      value: filters.subtopicFilter,
       onChange: handleSubtopicFilterChange,
-      placeholder: "Select subtopic",
+      placeholder: "",
       options: [
-        { label: "All Subtopics", value: "" },
-        ...subtopics.map(subtopic => ({ label: subtopic.name, value: subtopic.id }))
+        { label: "All Subtopics", value: undefined },
+        ...subtopics.map(subtopic => ({ label: subtopic.name, value: `${subtopic.id}` }))
       ]
     },
     {
       id: "type",
       label: "Question Type",
       type: "select" as const,
-      value: typeFilter,
+      value: filters.typeFilter,
       onChange: handleTypeFilterChange,
-      placeholder: "Select type",
+      placeholder: "",
       options: [
-        { label: "All Types", value: "" },
+        { label: "All Types", value: undefined },
         { label: "Multiple Choice", value: QuestionType.MULTIPLE_CHOICE },
         { label: "True/False", value: QuestionType.TRUE_FALSE }
       ]
     }
-  ]
-  
-  const columns = [
-    { id: "id", header: "ID", cell: (question: Question) => <span className="text-muted-foreground text-sm">{question.id}</span>, sortable: true },
-    { id: "title", header: "Title", cell: (question: Question) => <span className="font-medium">{question.title}</span>, sortable: true },
-    { 
-      id: "type", 
-      header: "Type", 
-      cell: (question: Question) => (
+  ], [filters.subtopicFilter, filters.typeFilter, handleSubtopicFilterChange, handleTypeFilterChange, subtopics])
+
+  const columns = useMemo(() => [
+    { id: "id", header: "ID", cell: (question: QuestionDetails) => <span className="text-muted-foreground text-sm">{question.id}</span>, sortable: true },
+    { id: "title", header: "Title", cell: (question: QuestionDetails) => <span className="font-medium">{question.title}</span>, sortable: true },
+    {
+      id: "type",
+      header: "Type",
+      cell: (question: QuestionDetails) => (
         <Badge variant={question.type === QuestionType.MULTIPLE_CHOICE ? "default" : "secondary"}>
           {question.type === QuestionType.MULTIPLE_CHOICE ? "Multiple Choice" : "True/False"}
         </Badge>
-      ), 
-      sortable: true 
+      ),
+      sortable: true,
     },
-    { id: "subtopic", header: "Subtopic", cell: (question: Question) => <span>{getSubtopicName(question.subtopicId)}</span>, sortable: true },
-    { 
-      id: "difficultyLevel", 
-      header: "Difficulty", 
-      cell: (question: Question) => {
+    { id: "subtopic", header: "Subtopic", cell: (question: QuestionDetails) => <>{question.subTopics.map( subtopic => <><span key={subtopic.id}>{getSubtopicName(`${subtopic.id}`)}</span><br/></>)}</>, sortable: true },
+    {
+      id: "difficultyLevel",
+      header: "Difficulty",
+      cell: (question: QuestionDetails) => {
         const difficulty = question.difficultyLevel
         let color = "bg-green-500"
         if (difficulty > 0.3 && difficulty <= 0.6) color = "bg-yellow-500"
         if (difficulty > 0.6) color = "bg-red-500"
-        
+
         return (
           <div className="flex items-center">
             <div className={`w-3 h-3 rounded-full ${color} mr-2`}></div>
             <span>{(difficulty * 10).toFixed(1)}/10</span>
           </div>
         )
-      }, 
-      sortable: true 
+      },
+      sortable: true
     },
-    { 
-      id: "marks", 
-      header: "Marks", 
-      cell: (question: Question) => <span>{question.totalPotentialMarks}</span>, 
-      sortable: true 
+    {
+      id: "marks",
+      header: "Marks",
+      cell: (question: QuestionDetails) => <span>{question.totalPotentialMarks}</span>,
+      sortable: true
     },
-    { 
-      id: "tags", 
-      header: "Tags", 
-      cell: (question: Question) => (
+    {
+      id: "tags",
+      header: "Tags",
+      cell: (question: QuestionDetails) => (
         <div className="flex flex-wrap gap-1">
           {question.tags.slice(0, 3).map((tag, index) => (
             <Badge key={index} variant="outline" className="text-xs">{tag}</Badge>
           ))}
-          {question.tags.length > 3 && <Badge variant="outline" className="text-xs">+{question.tags.length - 3}</Badge>}
+          {question.tags.length > 3 && <Badge key={`${question.tags.length - 3}`} variant="outline" className="text-xs">+{question.tags.length - 3}</Badge>}
         </div>
-      ), 
-      sortable: false 
+      ),
+      sortable: false
     },
-    { id: "createdAt", header: "Created At", cell: (question: Question) => new Date(question.createdAt).toLocaleDateString(), sortable: true },
+    { id: "createdAt", header: "Created At", cell: (question: QuestionDetails) => new Date(question.createdAt).toLocaleDateString('en-gb', {timeZone : 'utc'}), sortable: true },
     {
       id: "actions",
       header: "",
-      cell: (question: Question) => (
+      cell: (question: QuestionDetails) => (
         <div className="flex justify-end">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -433,8 +431,8 @@ export default function QuestionsPage() {
                 <Edit className="mr-2 h-4 w-4" />Edit
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem 
-                onClick={() => handleDeleteClick(question.id)} 
+              <DropdownMenuItem
+                onClick={() => handleDeleteClick(question.id)}
                 className="text-destructive focus:text-destructive"
               >
                 <Trash className="mr-2 h-4 w-4" />Delete
@@ -444,9 +442,9 @@ export default function QuestionsPage() {
         </div>
       )
     }
-  ]
-  
-  const sortOptions = [
+  ], [getSubtopicName, handleDeleteClick, handleEdit, handleViewQuestion])
+
+  const sortOptions = useMemo(() => [
     { label: "Title (A-Z)", value: "title_asc" },
     { label: "Title (Z-A)", value: "title_desc" },
     { label: "Subtopic (A-Z)", value: "subtopic_asc" },
@@ -458,16 +456,20 @@ export default function QuestionsPage() {
     { label: "Newest First", value: "createdAt_desc" },
     { label: "Oldest First", value: "createdAt_asc" }
   ]
+    , [])
 
-  const handleSortChange = (value: string) => {
+  const handleSortChange = useCallback((value: string) => {
     const [column, direction] = value.split("_")
     handleSort(column, direction as "asc" | "desc")
-  }
+  }, [handleSort])
 
-  const getCurrentSortValue = () => `${sortColumn}_${sortDirection}`
   
-  return (
-    <AdminLayout>
+  // const currentSortValue = useMemo(() => `${filters.sortColumn}_${filters.sortDirection}`, [filters.sortColumn, filters.sortDirection])
+  const getDataComponent = useCallback(() => {
+    const currentSortValue = `${filters.sortColumn}_${filters.sortDirection}`
+    console.log('Curr sort', currentSortValue);
+
+    return (
       <DataManagementLayout
         title="Questions"
         description="Manage all questions in the system"
@@ -486,7 +488,7 @@ export default function QuestionsPage() {
                   <SelectTrigger id={filter.id}><SelectValue placeholder={filter.placeholder} /></SelectTrigger>
                   <SelectContent>
                     {filter.options.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                      <SelectItem key={option.value} value={option.value as string}>{option.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -495,22 +497,22 @@ export default function QuestionsPage() {
           </div>
         }
         isLoading={isLoading}
-        onRefresh={handleRefresh}
+        onRefresh={applyFilters}
         className="px-2 sm:px-4"
-        defaultSort={getCurrentSortValue()}
-        defaultShowFilters={!!subtopicFilter || !!typeFilter}
+        defaultSort={currentSortValue}
+        defaultShowFilters={!!filters.subtopicFilter || !!filters.typeFilter}
       >
         <DataTable
-          data={getPaginatedData()}
+          data={getPaginatedData}
           columns={columns}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => `${item.id}`}
           onRowClick={(item) => handleViewQuestion(item.id)}
-          sortColumn={sortColumn}
-          sortDirection={sortDirection}
+          sortColumn={filters.sortColumn}
+          sortDirection={filters.sortDirection}
           onSort={handleSort}
           pagination={{
-            currentPage,
-            totalPages: Math.max(1, Math.ceil(filteredQuestions.length / 10)),
+            currentPage: questionReqParams?.page_number,
+            totalPages: Math.max(1, Math.ceil(totalQuestionAmt / questionReqParams.page_size)),
             onPageChange: handlePageChange
           }}
           emptyState={
@@ -521,12 +523,19 @@ export default function QuestionsPage() {
           }
         />
       </DataManagementLayout>
-      
+    )
+  }, [columns, filterOptions, filters.sortColumn, filters.sortDirection, filters.subtopicFilter, filters.typeFilter, getPaginatedData, handleAddNew, handlePageChange, applyFilters, handleSearch, handleSort, handleSortChange, handleViewQuestion, isLoading, questionReqParams?.page_number, questionReqParams.page_size, sortOptions, totalQuestionAmt])
+
+  return (
+    <AdminLayout>
+
+      {getDataComponent()}
+
       <DeleteConfirmationDialog
-        open={deleteDialogOpen}
-        onOpenChange={setDeleteDialogOpen}
+        open={deleteData.showDeleteDialog}
+        onOpenChange={(show) => dispatch(setQuestionTableDeleteData({ questionId: deleteData?.questionId, showDeleteDialog: show, isDeleting: deleteData.isDeleting }))}
         onConfirm={handleDeleteConfirm}
-        isDeleting={isDeleting}
+        isDeleting={deleteData.isDeleting}
         title="Delete Question"
         description="Are you sure you want to delete this question? This action cannot be undone."
       />
