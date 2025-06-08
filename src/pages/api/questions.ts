@@ -151,7 +151,7 @@ async function PUT(req: NextApiRequest, res: NextApiResponse<QuestionDetails | E
   }
 
   try {
-    const route = 'questions';
+    const route = `questions/${id}`;
     const apiKey = process.env.API_KEY;
     const nodeServer = process.env.SERVER_BASE_URL;
 

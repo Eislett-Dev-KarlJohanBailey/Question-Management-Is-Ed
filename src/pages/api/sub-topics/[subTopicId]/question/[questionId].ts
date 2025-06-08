@@ -8,7 +8,8 @@ export default async function handler(
   res: NextApiResponse<void|{error : string}>,
 ) {
   
-  if(req.method != 'POST')
+  const method = req.method
+  if( method != 'POST' && method != 'DELETE')
      return res.status(500).json({ error: 'Invalid request'});
     
   const {subTopicId, questionId } = req.query
@@ -31,7 +32,7 @@ export default async function handler(
       const rawResponse = await fetch(
         `${nodeServer}${route}`,
         {
-          method: 'POST',
+          method: method === 'POST' ? 'POST' : 'DELETE',
           headers: {
             'Accept': 'application/json',
             'Content-Type': 'application/json',

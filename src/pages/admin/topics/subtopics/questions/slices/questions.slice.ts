@@ -9,7 +9,7 @@ import { RootState } from "@/store/store";
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 
 type direction = 'asc' | 'desc'
-type array_operation = 'ADD'|'REMOVE'
+type array_operation = 'ADD' | 'REMOVE'
 interface QuestionReqParams {
   page_number: number,
   page_size: number,
@@ -36,9 +36,10 @@ interface QuestionPageSliceState {
     isDeleting: boolean,
     showDeleteDialog: boolean
   },
-  isLoading: boolean
-  questionFormData : QuestionFormData
-  subtopicsToLink : number[]
+  isLoading: boolean // for questions grid
+  isLoadingFormData: boolean // for question form
+  questionFormData: QuestionFormData
+  subtopicsToLink: number[]
 }
 
 const initialState = {
@@ -64,6 +65,7 @@ const initialState = {
     showDeleteDialog: false
   },
   isLoading: false,
+  isLoadingFormData: false,
 
   // For create form
   questionFormData: {
@@ -81,7 +83,7 @@ const initialState = {
       { id: 4, content: "", isCorrect: false }
     ]
   },
-  subtopicsToLink : [] as number[]
+  subtopicsToLink: [] as number[]
 
 }
 
@@ -126,19 +128,32 @@ export const QuestionPageSlice = createSlice({
       state.isLoading = action.payload;
     },
 
+    setQuestionFormIsLoading: (state: QuestionPageSliceState, action: PayloadAction<boolean>) => {
+      state.isLoadingFormData = action.payload;
+    },
+
     // for create form
-    setQuestionFormData: (state: QuestionPageSliceState, action: PayloadAction<{field: keyof QuestionFormData, value: any}>) => {
-      state.questionFormData = {...state.questionFormData , [action.payload.field] : action.payload.value}
+    setQuestionFormData: (state: QuestionPageSliceState, action: PayloadAction<{ field: keyof QuestionFormData, value: any }>) => {
+      state.questionFormData = { ...state.questionFormData, [action.payload.field]: action.payload.value }
     },
 
-    setQuestionFormSubtopics: (state: QuestionPageSliceState, action: PayloadAction<{ operation_type : array_operation, value: number}>) => {
-      if(action.payload.operation_type === 'ADD')
-      state.subtopicsToLink = [...state.subtopicsToLink, action.payload.value ]
-      if(action.payload.operation_type === 'REMOVE')
-      state.subtopicsToLink = state.subtopicsToLink.filter(id => id != action.payload.value)
+    // for create form
+    setAllQuestionFormData: (state: QuestionPageSliceState, action: PayloadAction<QuestionFormData>) => {
+      state.questionFormData = { ...action.payload }
     },
 
-     
+    setQuestionFormSubtopics: (state: QuestionPageSliceState, action: PayloadAction<{ operation_type: array_operation, value: number }>) => {
+      if (action.payload.operation_type === 'ADD')
+        state.subtopicsToLink = [...state.subtopicsToLink, action.payload.value]
+      if (action.payload.operation_type === 'REMOVE')
+        state.subtopicsToLink = state.subtopicsToLink.filter(id => id != action.payload.value)
+    },
+
+    setAllQuestionFormSubtopics: (state: QuestionPageSliceState, action: PayloadAction<number[]>) => {
+      state.subtopicsToLink = action.payload ?? []
+    },
+
+
 
 
   }
@@ -157,9 +172,12 @@ export const {
   setQuestionAmount,
   setQuestionTableFilters,
   setQuestionTableDeleteData,
-  setQuestionsIsLoading ,
-  setQuestionFormData ,
-  setQuestionFormSubtopics
+  setQuestionsIsLoading,
+  setQuestionFormIsLoading,
+  setAllQuestionFormData,
+  setQuestionFormData,
+  setQuestionFormSubtopics,
+  setAllQuestionFormSubtopics
 } = QuestionPageSlice.actions;
 
 export const getQuestionReqParams = (state: RootState) => state.QuestionPageSlice.questionParams;
@@ -170,6 +188,7 @@ export const getQuestionAmt = (state: RootState) => state.QuestionPageSlice.tota
 export const getQuestionTableFilters = (state: RootState) => state.QuestionPageSlice.filters;
 export const getQuestionTableDeleteData = (state: RootState) => state.QuestionPageSlice.delete;
 export const getQuestionsIsLoading = (state: RootState) => state.QuestionPageSlice.isLoading;
+export const getQuestionFormIsLoading = (state: RootState) => state.QuestionPageSlice.isLoadingFormData;
 
-export const getQuestionFormData = (state: RootState) => state.QuestionPageSlice.questionFormData;
+export const getQuestionFormData = (state: RootState) => state.QuestionPageSlice.questionFormData as QuestionDetails;
 export const getQuestionFormSubtopics = (state: RootState) => state.QuestionPageSlice.subtopicsToLink;

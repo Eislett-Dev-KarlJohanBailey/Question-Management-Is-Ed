@@ -32,90 +32,95 @@ import { handleFetchSubTopics } from "@/services/subtopics/subTopicsRequest"
 import { toast } from "@/hooks/use-toast"
 import { useAppDispatch, useAppSelector } from "@/store/hook"
 import { SubTopicDetails } from "@/models/subTopic/subTopicDetails"
-import { getQuestionFormData, getQuestionFormSubtopics, resetQuestionPageSlice, setQuestionFormData, setQuestionFormSubtopics } from "./slices/questions.slice"
+import { getQuestionFormData, getQuestionFormIsLoading, getQuestionFormSubtopics, resetQuestionPageSlice, setAllQuestionFormData, setAllQuestionFormSubtopics, setQuestionFormData, setQuestionFormIsLoading, setQuestionFormSubtopics } from "../slices/questions.slice"
 import { removeNulls } from "@/services/utils"
 import { displayErrorMessage, displaySuccessMessage } from "@/services/displayMessages"
+import { handleFetchQuestionById } from "@/services/questions/questionsRequest"
 
-// Mock data for demonstration
-const MOCK_SUBTOPICS = [
-  {
-    id: "1",
-    name: "Epsilon-Delta Definition",
-    description: "Formal definition of limits using epsilon-delta notation",
-    topicId: "1",
-    createdAt: "2025-01-16"
-  },
-  {
-    id: "2",
-    name: "Limit Laws",
-    description: "Properties and rules for calculating limits",
-    topicId: "1",
-    createdAt: "2025-01-17"
-  },
-  {
-    id: "3",
-    name: "First Law of Motion",
-    description: "An object at rest stays at rest, and an object in motion stays in motion",
-    topicId: "2",
-    createdAt: "2025-02-11"
-  },
-  {
-    id: "4",
-    name: "Second Law of Motion",
-    description: "Force equals mass times acceleration (F = ma)",
-    topicId: "2",
-    createdAt: "2025-02-12"
-  },
-  {
-    id: "5",
-    name: "Character Analysis",
-    description: "In-depth study of Hamlet's character and motivations",
-    topicId: "3",
-    createdAt: "2025-03-06"
-  }
-]
 
-export default function CreateQuestionPage() {
+export default function UpdateQuestionPage() {
   const router = useRouter()
   const dispatch = useAppDispatch();
 
   const formData = useAppSelector(getQuestionFormData);
   const questionSubtopics = useAppSelector(getQuestionFormSubtopics);
+  const isLoading = useAppSelector(getQuestionFormIsLoading);
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [subtopics, setSubtopics] = useState<SubTopicDetails[]>([])
   const [currentTag, setCurrentTag] = useState("")
   const [currentSubtopic, setCurrentSubtopic] = useState<number | undefined>(undefined)
-
-  // const [formData, setFormData] = useState<QuestionDetails>({
-  //   title: "",
-  //   description: "",
-  //   content: "",
-  //   tags: [],
-  //   type: QuestionType.MULTIPLE_CHOICE,
-  //   totalPotentialMarks: 1,
-  //   difficultyLevel: 0.1,
-  //   subTopics: [],
-  //   multipleChoiceOptions: [
-  //     { id: 1, content: "", isCorrect: false },
-  //     { id: 2, content: "", isCorrect: false },
-  //     { id: 3, content: "", isCorrect: false },
-  //     { id: 4, content: "", isCorrect: false }
-  //   ]
-  // })
+  const [existingSubtopicLinks, setExistingSubtopicLinks] = useState<number[]>([])
 
   // Initialize subtopicId from URL query
   useEffect(() => {
-    if (router.isReady && router.query.subtopic) {
+    // if (router.isReady && router.query.subtopic) {
+    //   dispatch(
+    //     setQuestionFormSubtopics({ operation_type: 'ADD', value: Number(router.query.subtopic) })
+    //   )
+    // }
+    if (router.isReady && router.query.questionId) {
       dispatch(
-        setQuestionFormSubtopics({ operation_type: 'ADD', value: Number(router.query.subtopic) })
+        setQuestionFormData({ field: 'id', value: Number(router.query.questionId) })
       )
     }
-  }, [dispatch, router.isReady, router.query.subtopic])
+  }, [dispatch, router.isReady, router.query.questionId, router.query.subtopic])
+
+  useEffect(() => {
+    // Get Question info by id
+    console.log('Fetching questions');
+    async function getQuestion() {
+      dispatch(setQuestionFormIsLoading(true))
+      let links = []  // existing subtopic links
+      const results = await handleFetchQuestionById(formData?.id as number)
+
+      if ((results as { error: string })?.error) {
+        toast({ title: (results as { error: string })?.error, style: { background: 'red', color: 'white' }, duration: 3500 })
+        // dispatch(resetQuestionPageSlice());
+      }
+
+      else { // Populate form with data
+        // console.log('Question details', results)
+        const data = {
+          id: formData.id,
+          title: (results as QuestionDetails)?.title,
+          content: (results as QuestionDetails)?.content,
+          description: (results as QuestionDetails)?.description,
+          tags: (results as QuestionDetails)?.tags,
+          totalPotentialMarks: (results as QuestionDetails)?.totalPotentialMarks,
+          difficultyLevel: (results as QuestionDetails)?.difficultyLevel,
+          type: (results as QuestionDetails)?.type,
+        }
+
+        let newOptions = []
+
+        if (data.type === QuestionType.TRUE_FALSE) {
+          newOptions = [
+            { id: 1, content: "True", isCorrect: (results as QuestionDetails).isTrue },
+            { id: 2, content: "False", isCorrect: !(results as QuestionDetails).isTrue }
+          ]
+        } else if (data.type === QuestionType.MULTIPLE_CHOICE) {
+          newOptions = (results as QuestionDetails)?.multipleChoiceOptions ?? (results as any)?.options ?? []
+        }
+        data['multipleChoiceOptions'] = newOptions
+        links = (results as QuestionDetails)?.subTopics.map(el => el.id);
+
+        // console.log('Question data', data)
+        dispatch(setAllQuestionFormData(data as any));
+      }
+
+      dispatch(setQuestionFormIsLoading(false));
+      setExistingSubtopicLinks(links);
+    }
+
+
+    if (formData.id)
+      getQuestion()
+  }, [dispatch, formData.id])
+
 
   //  GET LIST OF SUB TOPICS
   useEffect(() => {
-    console.log('Fetching sub topics');
     async function getSubTopics() {
       const topic_id = undefined
       const results = await handleFetchSubTopics(1, 50, topic_id)
@@ -131,8 +136,16 @@ export default function CreateQuestionPage() {
 
     }
 
+
     getSubTopics()
-  }, [dispatch])
+  }, [])
+
+
+  useEffect(() => {
+    dispatch(setAllQuestionFormSubtopics(existingSubtopicLinks))
+  }, [dispatch, existingSubtopicLinks])
+
+
 
   // Update form data
   const handleInputChange = useCallback((field: keyof QuestionFormData, value: any) => {
@@ -186,13 +199,6 @@ export default function CreateQuestionPage() {
 
   // Handle correct option selection
   const handleCorrectOptionChange = useCallback((id: number) => {
-    // setFormData(prev => ({
-    //   ...prev,
-    //   multipleChoiceOptions: prev.multipleChoiceOptions.map(option => ({
-    //     ...option,
-    //     isCorrect: option.id === id
-    //   }))
-    // }))
 
     const newOptions = formData.multipleChoiceOptions.map(option =>
       option.id === id ? { ...option, isCorrect: !option.isCorrect } : option
@@ -205,13 +211,6 @@ export default function CreateQuestionPage() {
   // Add a new option (for multiple choice)
   const handleAddOption = useCallback(() => {
     if (formData.type === QuestionType.MULTIPLE_CHOICE) {
-      // setFormData(prev => ({
-      //   ...prev,
-      //   multipleChoiceOptions: [
-      //     ...prev.multipleChoiceOptions,
-      //     { id: (prev.multipleChoiceOptions?.length ?? 0) + 1, content: "", isCorrect: false }
-      //   ]
-      // }))
 
 
       const newOptions = [...formData.multipleChoiceOptions,
@@ -238,11 +237,6 @@ export default function CreateQuestionPage() {
         }))
       }
 
-      // setFormData(prev => ({
-      //   ...prev,
-      //   multipleChoiceOptions: newOptions
-      // }))
-
 
       dispatch(setQuestionFormData({ field: 'multipleChoiceOptions', value: newOptions }))
 
@@ -252,10 +246,7 @@ export default function CreateQuestionPage() {
   // Handle tags
   const handleAddTag = useCallback(() => {
     if (currentTag.trim() && !formData.tags.includes(currentTag.trim())) {
-      // setFormData(prev => ({
-      //   ...prev,
-      //   tags: [...prev.tags, currentTag.trim()]
-      // }))
+
 
       dispatch(setQuestionFormData({ field: 'tags', value: [...formData.tags, currentTag.trim()] }))
       setCurrentTag("")
@@ -263,21 +254,14 @@ export default function CreateQuestionPage() {
   }, [currentTag, dispatch, formData.tags])
 
   const handleRemoveTag = useCallback((tag: string) => {
-    // setFormData(prev => ({
-    //   ...prev,
-    //   tags: prev.tags.filter(t => t !== tag)
-    // }))
+
     const newTags = formData.tags.filter(t => t !== tag)
     dispatch(setQuestionFormData({ field: 'tags', value: newTags }))
 
   }, [dispatch, formData.tags])
 
   const handleSubtopic = useCallback((id: number) => {
-    // setFormData(prev => ({
-    //   ...prev,
-    //   subTopics: prev.subTopics.filter(subtopic => subtopic.id !== id)
 
-    // }))
 
     dispatch(setQuestionFormSubtopics({ operation_type: 'REMOVE', value: id }))
   }, [dispatch])
@@ -304,7 +288,7 @@ export default function CreateQuestionPage() {
     let linkSuccess = true
 
     try {
-      for (let subtopicId of questionSubtopics) {
+      for (let subtopicId of questionSubtopics.filter(subtopic => !existingSubtopicLinks.includes(subtopic))) {
 
         const rawResponse = await fetch(`/api/sub-topics/${subtopicId}/question/${questionId}`,
           {
@@ -334,13 +318,57 @@ export default function CreateQuestionPage() {
 
     return linkSuccess
 
-  }, [questionSubtopics]);
+  }, [existingSubtopicLinks, questionSubtopics]);
+
+  // Handle linking question to sub topic
+  const handleUnLinkingSubtopics = useCallback(async (questionId: number) => {
+    if (existingSubtopicLinks.length === 0)
+      return true;
+    let unLinkSuccess = true
+
+    try {
+      for (let subtopicId of existingSubtopicLinks.filter(subtopic => !questionSubtopics.includes(subtopic))) {
+
+        const rawResponse = await fetch(`/api/sub-topics/${subtopicId}/question/${questionId}`,
+          {
+            method: 'DELETE',
+            headers: {
+              'Accept': 'application/json',
+              'Content-Type': 'application/json'
+            },
+
+          }
+        );
+
+        if (!rawResponse.ok) {
+          unLinkSuccess = false;
+          break;
+        }
+        else if (rawResponse.ok && subtopicId === questionSubtopics[-1])
+          unLinkSuccess = true;
+
+      }
+    }
+    catch (e) {
+      unLinkSuccess = false;
+      console.log('Question Link err: ', e);
+      // displayErrorMessage('Failed to link question to selected subtopics')
+    }
+
+    return unLinkSuccess
+
+  }, [existingSubtopicLinks, questionSubtopics]);
 
   // Form submission
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault()
     // console.log('FOrm Data', formData);
     // Validation
+    if (!formData.id) {
+      // alert("Please enter a title")
+      displayErrorMessage('Missing question id', "No question id found")
+      return
+    }
     if (!formData.title.trim()) {
       // alert("Please enter a title")
       displayErrorMessage('Missing required fields', "Please enter a title")
@@ -388,22 +416,25 @@ export default function CreateQuestionPage() {
         : formData?.multipleChoiceOptions.find(el => el?.content?.toLowerCase() === 'true').isCorrect;
 
       let params = {
-        title: formData?.title,
-        content: formData?.content,
-        description: formData?.description,
-        tags: formData?.tags,
-        totalPotentialMarks: formData?.totalPotentialMarks,
-        difficultyLevel: formData?.difficultyLevel,
-        type: formData?.type,
-        multipleChoiceOptions: formData?.type === QuestionType.MULTIPLE_CHOICE ? formData?.multipleChoiceOptions : null,
-        isTrue: isTrue,
+        questionDetails: {
+          title: formData?.title,
+          content: formData?.content,
+          description: formData?.description,
+          tags: formData?.tags,
+          totalPotentialMarks: formData?.totalPotentialMarks,
+          difficultyLevel: formData?.difficultyLevel,
+          type: formData?.type,
+          multipleChoiceOptions: formData?.type === QuestionType.MULTIPLE_CHOICE ? formData?.multipleChoiceOptions : null,
+          isTrue: isTrue
+        },
+        id: formData.id
       }
 
       params = removeNulls(params) as any;
 
       const rawResponse = await fetch('/api/questions',
         {
-          method: 'POST',
+          method: 'PUT',
           headers: {
             'Accept': 'application/json',
             'Content-Type': 'application/json'
@@ -415,19 +446,24 @@ export default function CreateQuestionPage() {
       const data: QuestionDetails = await rawResponse.json();
 
       let linkedAllSubtopics = true;
+      let unlinkSuccessful = true;
       // if created successfully link question to subtopic
-      if (data?.id && questionSubtopics.length > 0) {
+      if (data?.id) {
         linkedAllSubtopics = await handleLinkSubtopics(data.id)
+      }
+      if (data?.id) {
+        unlinkSuccessful = await handleUnLinkingSubtopics(data.id)
       }
 
       if (
         !linkedAllSubtopics ||
+        !unlinkSuccessful ||
         !data.id
       )
-        displayErrorMessage(!data?.id ? 'Failed to create question!' : 'Failed to Link questions')
+        displayErrorMessage(!data?.id ? 'Failed to update question!' : 'Failed to Link questions')
       else {
         dispatch(resetQuestionPageSlice());
-        displaySuccessMessage('Question Created!');
+        displaySuccessMessage('Question Updated!');
         setTimeout(() => router.push("/admin/topics/subtopics/questions"), 1500);
       }
 
@@ -438,7 +474,7 @@ export default function CreateQuestionPage() {
       displayErrorMessage('Failed to submit!')
 
     }
-  }, [dispatch, formData.content, formData?.description, formData?.difficultyLevel, formData.multipleChoiceOptions, formData?.tags, formData.title, formData?.totalPotentialMarks, formData.type, handleLinkSubtopics, questionSubtopics.length, router]);
+  }, [dispatch, formData.content, formData?.description, formData?.difficultyLevel, formData.id, formData.multipleChoiceOptions, formData?.tags, formData.title, formData?.totalPotentialMarks, formData.type, handleLinkSubtopics, questionSubtopics.length, router]);
 
   const getSubtopicName = useCallback((id: number) =>
     subtopics.find(s => s.id === id)?.name || "Unknown", [subtopics])
@@ -459,7 +495,7 @@ export default function CreateQuestionPage() {
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>
-            <h1 className="text-2xl font-bold">Create New Question</h1>
+            <h1 className="text-2xl font-bold">Update New Question</h1>
           </div>
 
           <div className="flex items-center space-x-2">
@@ -467,7 +503,7 @@ export default function CreateQuestionPage() {
             <Button onClick={handleSubmit}
               disabled={isSubmitting}
             >
-              {isSubmitting ? "Creating..." : "Create Question"}
+              {isSubmitting ? "Updating..." : "Update Question"}
             </Button>
           </div>
         </div>
@@ -856,7 +892,7 @@ export default function CreateQuestionPage() {
             <CardFooter className="flex justify-between">
               <Button variant="outline" onClick={() => router.back()}>Cancel</Button>
               <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "Creating..." : "Create Question"}
+                {isSubmitting ? "Updating..." : "Update Question"}
               </Button>
             </CardFooter>
           </Card>

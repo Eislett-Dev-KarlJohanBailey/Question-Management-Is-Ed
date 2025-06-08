@@ -9,6 +9,31 @@ interface returnType {
     error?: string;
 }  
 
+async function handleFetchQuestionById(question_id?: number): Promise<QuestionDetails | {error? : string}> {
+
+    try {
+        
+        
+        const rawResponse = await fetch(`/api/questions/${question_id}`,
+            {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                
+            }
+        );
+
+        return await rawResponse.json() as  QuestionDetails;
+    }
+    catch(e){
+        toast({ title: 'Error fetching question', style: { background: 'red', color: 'white' }, duration: 3500 })
+        console.log('Questions error', e);
+        return {error : 'Failed to fetch question by id'}
+    }
+}
+
 async function handleFetchQuestions(page_number: number, page_size: number, title?: string, sub_topic_id?: number): Promise<returnType> {
 
     try {
@@ -65,4 +90,4 @@ async function handleDeleteQuestion(question_id: number): Promise<{deleted : boo
     }
 }
 
-export {handleFetchQuestions, handleDeleteQuestion};
+export {handleFetchQuestionById, handleFetchQuestions, handleDeleteQuestion};
