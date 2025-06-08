@@ -4,7 +4,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 export default async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<QuestionDetails | { error: string }>,
+  res: NextApiResponse<QuestionDetails | void | { error: string }>,
 ) {
   const { questionId } = req.query
   const method = req.method
@@ -12,7 +12,7 @@ export default async function handler(
 
   console.log(`${method} /api/questions/${questionId} (App Router)`);
 
-  if (req.method != 'GET' && req.method != 'DELETE')
+  if (method != 'GET' && method != 'DELETE')
     return res.status(500).json({ error: 'Invalid request' });
   else if (!questionId || isNaN(Number(questionId))) {
     return res.status(200).json({ error: 'Invalid question id' });
@@ -42,10 +42,13 @@ export default async function handler(
       throw new Error('Failed to fetch questions');
     }
 
-    const response = await rawResponse.json()
+    if (method === 'GET') {
+      const response = await rawResponse.json()
+      return res.status(200).json(response);
+    }
 
-    // console.log('GET /api/questions (Response):', response);
-    return res.status(200).json(response);
+    // DELETE RESPONSE
+    return res.status(200).end('');
   } catch (error) {
     return res.status(500).json({ error: `Failed to operate on question #${questionId} : ` + error.message });
   }

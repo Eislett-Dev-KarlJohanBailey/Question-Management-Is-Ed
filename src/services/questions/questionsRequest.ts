@@ -36,28 +36,32 @@ async function handleFetchQuestions(page_number: number, page_size: number, titl
     }
 }
 
-async function handleDeleteQuestion(question_id: number): Promise<returnType> {
+async function handleDeleteQuestion(question_id: number): Promise<{deleted : boolean , error? : string}> {
 
     try {
         
         
-        const rawResponse = await fetch(`/api/questions${question_id}`,
+        const rawResponse = await fetch(`/api/questions/${question_id}`,
             {
                 method: 'DELETE',
                 headers: {
-                    'Accept': 'application/json, text/plain, */*',
+                    'Accept': 'application/json',
                     'Content-Type': 'application/json'
                 },
                 
             }
         );
 
-        return await rawResponse.json() as {data : QuestionDetails[] , amount : number};
+        if(rawResponse.ok)
+            return {deleted : true}
+
+        return {deleted : false}
+       
     }
     catch(e){
         toast({ title: 'Error deleting question', style: { background: 'red', color: 'white' }, duration: 3500 })
         console.log('Questions error', e);
-        return {error : 'Failed to delete question'}
+        return {deleted: false , error : 'Failed to delete question'}
     }
 }
 

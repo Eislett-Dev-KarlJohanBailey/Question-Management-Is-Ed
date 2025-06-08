@@ -19,13 +19,13 @@ export interface Question {
 }
 
 export interface QuestionOption {
-  id: string
+  id: number
   content: string
   isCorrect: boolean
 }
 
 export interface QuestionFormData {
-  id?: string
+  id?: number
   title: string
   description: string
   content: string
@@ -33,6 +33,6 @@ export interface QuestionFormData {
   type: QuestionType
   totalPotentialMarks: number
   difficultyLevel: number
-  subtopicId: string
-  options: QuestionOption[]
+  // subtopicId: string
+  multipleChoiceOptions: QuestionOption[]
 }

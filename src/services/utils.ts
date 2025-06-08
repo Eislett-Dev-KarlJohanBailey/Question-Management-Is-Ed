@@ -9,7 +9,7 @@ export function removeNulls(obj: any): {} {
 
   return Object.fromEntries(
     Object.entries(obj)
-      .filter(([_, v]) => v != null)
+      .filter(([_, v]) => v != null || v != undefined)
       .map(([k, v]) => [k, isJsonObject(v) ? removeNulls(v) : v])
   );
 }

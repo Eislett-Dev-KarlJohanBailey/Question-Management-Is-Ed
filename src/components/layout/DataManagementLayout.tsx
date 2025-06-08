@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useCallback, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { PlusCircle, RefreshCw, Search, SlidersHorizontal, X } from "lucide-react"
@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
+import { useDebouncedCallback } from "use-debounce"
 
 export interface DataManagementLayoutProps {
   title: string
@@ -57,111 +58,138 @@ export function DataManagementLayout({
   const isMobile = useIsMobile()
 
   const [internalSearchQuery, setInternalSearchQuery] = useState(router.query.search as string || "")
-  const debouncedSearchQuery = useDebounce(internalSearchQuery, 500)
+  // const debouncedSearchQuery = useDebounce(internalSearchQuery, 500)
 
   const [internalSortValue, setInternalSortValue] = useState(defaultSort || (sortOptions && sortOptions.length > 0 ? sortOptions[0].value : ""))
   const [showFilters, setShowFilters] = useState(defaultShowFilters)
   const [isSheetOpen, setIsSheetOpen] = useState(false)
 
-  useEffect(() => {
-    if (router.isReady) {
-      const querySearch = router.query.search as string || ""
-      if (querySearch !== internalSearchQuery) {
-        setInternalSearchQuery(querySearch)
-      }
+  const initialize = useDebouncedCallback(() => {
 
-      const querySort = router.query.sort as string || defaultSort || (sortOptions && sortOptions.length > 0 ? sortOptions[0].value : "")
-      if (querySort !== internalSortValue) {
-        setInternalSortValue(querySort)
-      }
-      
-      const showFiltersValue = router.query.showFilters === "true"
-      setShowFilters(showFiltersValue)
-      
-      // Only set sheet open if on mobile and filters should be shown
-      if (isMobile && showFiltersValue) {
-        setIsSheetOpen(true)
-      }
+    const querySearch = router.query.search as string || ""
+    if (querySearch !== internalSearchQuery) {
+      setInternalSearchQuery(querySearch)
     }
-  }, [router.isReady, router.query, defaultSort, sortOptions, internalSearchQuery, internalSortValue, defaultShowFilters, isMobile])
+
+    const querySort = router.query.sort as string || defaultSort || (sortOptions && sortOptions.length > 0 ? sortOptions[0].value : "")
+    if (querySort !== internalSortValue) {
+      setInternalSortValue(querySort)
+    }
+
+    const showFiltersValue = router.query.showFilters === "true"
+    setShowFilters(showFiltersValue)
+
+    // Only set sheet open if on mobile and filters should be shown
+    if (isMobile && showFiltersValue) {
+      setIsSheetOpen(true)
+    }
+
+  }, 300);
 
   useEffect(() => {
-    if (onSearch) {
-      onSearch(debouncedSearchQuery)
-    }
+    if (router.isReady)
+      initialize()
+  }, [router.isReady, initialize])
+
+  // useEffect(() => {
+  //   if (onSearch) {
+  //     onSearch(debouncedSearchQuery)
+  //   }
+  //   const currentQuery = { ...router.query }
+  //   if (debouncedSearchQuery) {
+  //     currentQuery.search = debouncedSearchQuery
+  //   } else {
+  //     delete currentQuery.search
+  //   }
+  //   if (Object.keys(currentQuery).length > 0 || router.pathname !== router.asPath.split("?")[0]) {
+  //     router.push({ pathname: router.pathname, query: currentQuery }, undefined, { shallow: true })
+  //   }
+
+  // }, [debouncedSearchQuery, onSearch, router])
+
+  const updateRoutePath = useDebouncedCallback((searchVal: string) => {
     const currentQuery = { ...router.query }
-    if (debouncedSearchQuery) {
-      currentQuery.search = debouncedSearchQuery
+    if (searchVal.length > 0) {
+      currentQuery.search = searchVal
     } else {
       delete currentQuery.search
     }
     if (Object.keys(currentQuery).length > 0 || router.pathname !== router.asPath.split("?")[0]) {
-        router.push({ pathname: router.pathname, query: currentQuery }, undefined, { shallow: true })
+      router.push({ pathname: router.pathname, query: currentQuery }, undefined, { shallow: true })
     }
-  }, [debouncedSearchQuery, onSearch, router])
+  }, 500);
+  
+  const handleSearchChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const searchVal = event.target.value ?? ''
+    setInternalSearchQuery(searchVal)
+    
+    // update url pathname 
+    updateRoutePath(searchVal);
 
-  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setInternalSearchQuery(event.target.value)
-  }
+    if (onSearch) {
+      onSearch(searchVal)
+    }
 
-  const handleClearSearch = () => {
+  }, [onSearch, updateRoutePath])
+
+  const handleClearSearch = useCallback(() => {
     setInternalSearchQuery("")
     if (onSearch) {
       onSearch("")
     }
     const { search, ...restQuery } = router.query
     router.push({ pathname: router.pathname, query: restQuery }, undefined, { shallow: true })
-  }
+  }, [onSearch, router])
 
-  const handleSortChange = (value: string) => {
+  const handleSortChange = useCallback((value: string) => {
     setInternalSortValue(value)
     if (onSortChange) {
       onSortChange(value)
     }
     router.push({ pathname: router.pathname, query: { ...router.query, sort: value } }, undefined, { shallow: true })
-  }
+  }, [onSortChange, router])
 
-  const toggleFilters = () => {
+  const toggleFilters = useCallback(() => {
     const newShowFilters = !showFilters
     setShowFilters(newShowFilters)
-    
+
     // For mobile, also control the sheet state
     if (isMobile) {
       setIsSheetOpen(newShowFilters)
     }
-    
+
     const currentQuery = { ...router.query }
     if (newShowFilters) {
       currentQuery.showFilters = "true"
     } else {
       delete currentQuery.showFilters
     }
-    
+
     router.push({ pathname: router.pathname, query: currentQuery }, undefined, { shallow: true })
-  }
-  
-  const handleSheetOpenChange = (open: boolean) => {
+  }, [isMobile, router, showFilters])
+
+  const handleSheetOpenChange = useCallback((open: boolean) => {
     setIsSheetOpen(open)
-    
+
     // Only update showFilters and URL if the sheet state actually changed
     if (showFilters !== open) {
       setShowFilters(open)
-      
+
       const currentQuery = { ...router.query }
       if (open) {
         currentQuery.showFilters = "true"
       } else {
         delete currentQuery.showFilters
       }
-      
+
       router.push({ pathname: router.pathname, query: currentQuery }, undefined, { shallow: true })
     }
-  }
+  }, [router, showFilters]);
 
   // Render the filter controls based on device type
-  const renderFilterControls = () => {
+  const renderFilterControls = useMemo(() => {
     if (!filterControls) return null;
-    
+
     if (isMobile) {
       return (
         <Sheet open={isSheetOpen} onOpenChange={handleSheetOpenChange}>
@@ -182,14 +210,14 @@ export function DataManagementLayout({
         </Sheet>
       )
     }
-    
+
     return (
       <>
         <Button variant="outline" onClick={toggleFilters} className="ml-2">
           <SlidersHorizontal className="mr-2 h-4 w-4" />
           {showFilters ? "Hide Filters" : "Show Filters"}
         </Button>
-        
+
         {showFilters && (
           <div className="w-full mt-4 p-4 border rounded-md bg-card">
             {filterControls}
@@ -197,7 +225,7 @@ export function DataManagementLayout({
         )}
       </>
     )
-  }
+  }, [filterControls, handleSheetOpenChange, isMobile, isSheetOpen, showFilters, toggleFilters])
 
   return (
     <div className={cn("p-4 sm:p-6 lg:p-8 space-y-6", className)}>
@@ -241,7 +269,7 @@ export function DataManagementLayout({
               )}
             </div>
           )}
-          
+
           <div className="flex items-center space-x-2 flex-wrap gap-2">
             {sortOptions && sortOptions.length > 0 && onSortChange && (
               <Select value={internalSortValue} onValueChange={handleSortChange}>
@@ -293,7 +321,7 @@ export function DataManagementLayout({
             )}
           </div>
         </div>
-        
+
         {!isMobile && showFilters && filterControls && (
           <div className="p-4 border rounded-md bg-card">
             {filterControls}

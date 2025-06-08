@@ -1,5 +1,6 @@
 
 import { DEFAULT_PAGE_SIZE } from "@/constants/tablePageSizes";
+import { QuestionFormData, QuestionType } from "@/lib/types";
 import { QuestionDetails } from "@/models/questions/questionDetails";
 import { QuestionOptionDetails } from "@/models/questions/questionOptionDetails";
 import { QuestionTypes } from "@/models/questions/questionTypes";
@@ -8,6 +9,7 @@ import { RootState } from "@/store/store";
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 
 type direction = 'asc' | 'desc'
+type array_operation = 'ADD'|'REMOVE'
 interface QuestionReqParams {
   page_number: number,
   page_size: number,
@@ -23,24 +25,26 @@ interface FilterTypes {
 }
 
 interface QuestionPageSliceState {
-  questions : QuestionDetails[]
-  filteredQuestions : QuestionDetails[]
-  subtopics : SubTopicDetails[]
+  questions: QuestionDetails[]
+  filteredQuestions: QuestionDetails[]
+  subtopics: SubTopicDetails[]
   questionParams: QuestionReqParams
   totalQuestion: number
   filters: FilterTypes
-  delete : {
-    questionId : number | undefined ,
-    isDeleting : boolean ,
-    showDeleteDialog : boolean 
-  } ,
-  isLoading : boolean
+  delete: {
+    questionId: number | undefined,
+    isDeleting: boolean,
+    showDeleteDialog: boolean
+  },
+  isLoading: boolean
+  questionFormData : QuestionFormData
+  subtopicsToLink : number[]
 }
 
 const initialState = {
-  questions : [] as QuestionDetails[] ,
-  filteredQuestions : [] as QuestionDetails[] ,
-  subtopics : [] as SubTopicDetails[] ,
+  questions: [] as QuestionDetails[],
+  filteredQuestions: [] as QuestionDetails[],
+  subtopics: [] as SubTopicDetails[],
   questionParams: {
     page_number: 1,
     page_size: DEFAULT_PAGE_SIZE,
@@ -54,12 +58,31 @@ const initialState = {
     subtopicFilter: undefined as string | undefined,
     typeFilter: undefined as string | undefined,
   },
-  delete : {
-    questionId : undefined as number | undefined,
-    isDeleting : false ,
-    showDeleteDialog : false 
-  } ,
-  isLoading : false
+  delete: {
+    questionId: undefined as number | undefined,
+    isDeleting: false,
+    showDeleteDialog: false
+  },
+  isLoading: false,
+
+  // For create form
+  questionFormData: {
+    title: "",
+    description: "",
+    content: "",
+    tags: [],
+    type: QuestionType.MULTIPLE_CHOICE,
+    totalPotentialMarks: 1,
+    difficultyLevel: 0.1,
+    multipleChoiceOptions: [
+      { id: 1, content: "", isCorrect: false },
+      { id: 2, content: "", isCorrect: false },
+      { id: 3, content: "", isCorrect: false },
+      { id: 4, content: "", isCorrect: false }
+    ]
+  },
+  subtopicsToLink : [] as number[]
+
 }
 
 export const QuestionPageSlice = createSlice({
@@ -75,7 +98,7 @@ export const QuestionPageSlice = createSlice({
     },
 
     setFilteredQuestions: (state: QuestionPageSliceState, action: PayloadAction<QuestionDetails[]>) => {
-      state.filteredQuestions =  action.payload ?? []
+      state.filteredQuestions = action.payload ?? []
 
     },
 
@@ -95,15 +118,28 @@ export const QuestionPageSlice = createSlice({
       state.filters = { ...state.filters, ...action.payload }
     },
 
-    setQuestionTableDeleteData: (state: QuestionPageSliceState, action: PayloadAction<{questionId : number | undefined , isDeleting : boolean , showDeleteDialog : boolean}>) => {
-      state.delete = action.payload ;
+    setQuestionTableDeleteData: (state: QuestionPageSliceState, action: PayloadAction<{ questionId: number | undefined, isDeleting: boolean, showDeleteDialog: boolean }>) => {
+      state.delete = action.payload;
     },
 
     setQuestionsIsLoading: (state: QuestionPageSliceState, action: PayloadAction<boolean>) => {
-      state.isLoading = action.payload ;
+      state.isLoading = action.payload;
+    },
+
+    // for create form
+    setQuestionFormData: (state: QuestionPageSliceState, action: PayloadAction<{field: keyof QuestionFormData, value: any}>) => {
+      state.questionFormData = {...state.questionFormData , [action.payload.field] : action.payload.value}
+    },
+
+    setQuestionFormSubtopics: (state: QuestionPageSliceState, action: PayloadAction<{ operation_type : array_operation, value: number}>) => {
+      if(action.payload.operation_type === 'ADD')
+      state.subtopicsToLink = [...state.subtopicsToLink, action.payload.value ]
+      if(action.payload.operation_type === 'REMOVE')
+      state.subtopicsToLink = state.subtopicsToLink.filter(id => id != action.payload.value)
     },
 
      
+
 
   }
 })
@@ -118,10 +154,12 @@ export const {
   setQuestions,
   setFilteredQuestions,
   setQuestionSubtopics,
-  setQuestionAmount ,
-  setQuestionTableFilters ,
-  setQuestionTableDeleteData ,
-  setQuestionsIsLoading 
+  setQuestionAmount,
+  setQuestionTableFilters,
+  setQuestionTableDeleteData,
+  setQuestionsIsLoading ,
+  setQuestionFormData ,
+  setQuestionFormSubtopics
 } = QuestionPageSlice.actions;
 
 export const getQuestionReqParams = (state: RootState) => state.QuestionPageSlice.questionParams;
@@ -132,3 +170,6 @@ export const getQuestionAmt = (state: RootState) => state.QuestionPageSlice.tota
 export const getQuestionTableFilters = (state: RootState) => state.QuestionPageSlice.filters;
 export const getQuestionTableDeleteData = (state: RootState) => state.QuestionPageSlice.delete;
 export const getQuestionsIsLoading = (state: RootState) => state.QuestionPageSlice.isLoading;
+
+export const getQuestionFormData = (state: RootState) => state.QuestionPageSlice.questionFormData;
+export const getQuestionFormSubtopics = (state: RootState) => state.QuestionPageSlice.subtopicsToLink;

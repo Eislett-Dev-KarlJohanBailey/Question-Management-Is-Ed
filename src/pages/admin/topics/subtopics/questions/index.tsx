@@ -36,6 +36,7 @@ import { handleFetchSubTopics } from "@/services/subtopics/subTopicsRequest"
 import { QuestionDetails } from "@/models/questions/questionDetails"
 import { QuestionType } from "@/lib/types"
 import { removeNulls } from "@/services/utils"
+import { displayErrorMessage, displaySuccessMessage } from "@/services/displayMessages"
 
 
 
@@ -145,7 +146,7 @@ export default function QuestionsPage() {
 
     const pageFromUrl = router.query.page ? parseInt(router.query.page as string, 10) : DEFAULT_PAGE_NUMBER
     if (!isNaN(pageFromUrl)) dispatch(setQuestionReqParams({ page_number: pageFromUrl }))
-    
+
     const searchFromUrl = router.query.search as string
     // if (searchFromUrl) dispatch(setQuestionReqParams({ title: searchFromUrl }));
 
@@ -156,7 +157,7 @@ export default function QuestionsPage() {
     removeNulls(reqParams);
     dispatch(setQuestionReqParams(reqParams))
 
-    
+
     const sortColumnFromUrl = router.query.sortColumn as string
     const sortDirectionFromUrl = router.query.sortDirection as "asc" | "desc"
     // if (sortColumnFromUrl) dispatch(setQuestionTableFilters({ sortColumn: sortColumnFromUrl }))
@@ -168,13 +169,13 @@ export default function QuestionsPage() {
     const typeFilterFromUrl = router.query.type as string
     // if (typeFilterFromUrl) 
     //   dispatch(setQuestionTableFilters({ typeFilter: typeFilterFromUrl }))
-    
-    const filterParams = { 
+
+    const filterParams = {
       typeFilter: typeFilterFromUrl,
-      sortColumn: sortColumnFromUrl ,
+      sortColumn: sortColumnFromUrl,
       sortDirection: sortDirectionFromUrl && ["asc", "desc"].includes(sortDirectionFromUrl) ? sortDirectionFromUrl : undefined,
-      subtopicFilter: subtopicFilterFromUrl ,
-     }
+      subtopicFilter: subtopicFilterFromUrl,
+    }
     dispatch(setQuestionTableFilters(filterParams))
 
     // applyFilters()
@@ -233,9 +234,9 @@ export default function QuestionsPage() {
   const handleAddNew = useCallback(() => {
     router.push({
       pathname: "/admin/topics/subtopics/questions/create",
-      query: { subtopic: router.query.subtopic }
+      query: questionReqParams?.sub_topic_id ? { subtopic: questionReqParams?.sub_topic_id } : {}
     })
-  }, [router])
+  }, [questionReqParams?.sub_topic_id, router])
 
   const handleEdit = useCallback((id: number | string) => {
     router.push(`/admin/topics/subtopics/questions/edit/${id}`)
@@ -247,19 +248,21 @@ export default function QuestionsPage() {
     dispatch(setQuestionTableDeleteData({ questionId: id, showDeleteDialog: true, isDeleting: false }))
   }, [dispatch])
 
-  const handleDeleteConfirm = async () => {
+  const handleDeleteConfirm = useCallback(async () => {
     if (!deleteData.questionId) return
     dispatch(setQuestionTableDeleteData({ questionId: deleteData.questionId, showDeleteDialog: true, isDeleting: true }))
 
     const result = await handleDeleteQuestion(deleteData.questionId)
 
+    if (result.deleted)
+      displaySuccessMessage('Deleted Question!')
 
     setTimeout(() => {
       // setQuestions(questions.filter(question => question.id !== questionToDelete))
       dispatch(setQuestionTableDeleteData({ questionId: undefined, showDeleteDialog: false, isDeleting: false }))
 
     }, 1000)
-  }
+  }, [deleteData.questionId, dispatch])
 
   const handleViewQuestion = useCallback((id: number | string) => {
     router.push(`/admin/topics/subtopics/questions/${id}`)
@@ -271,9 +274,9 @@ export default function QuestionsPage() {
 
   const handleSubtopicFilterChange = useCallback((value: string) => {
     dispatch(setQuestionTableFilters({ subtopicFilter: value }))
-    dispatch(setQuestionReqParams({ page_number: 1 , sub_topic_id : value})) //triggers the apply filter
-    
-    
+    dispatch(setQuestionReqParams({ page_number: 1, sub_topic_id: value })) //triggers the apply filter
+
+
     // update url 
     const query = { ...router.query, subtopic: value || undefined, page: "1" }
     if (!value) delete query.subtopic
@@ -283,9 +286,9 @@ export default function QuestionsPage() {
   const handleTypeFilterChange = useCallback((value: string) => {
     dispatch(setQuestionTableFilters({ typeFilter: value }))
     dispatch(setQuestionReqParams({ page_number: 1 }))
-    
-    setTimeout( applyFilters , 800 );
-    
+
+    setTimeout(applyFilters, 800);
+
     // update url
     const query = { ...router.query, type: value || undefined, page: "1" }
     if (!value) delete query.type
@@ -294,9 +297,9 @@ export default function QuestionsPage() {
 
   const handleSort = useCallback((column: string, direction: "asc" | "desc") => {
     dispatch(setQuestionTableFilters({ sortColumn: column, sortDirection: direction }))
-    
-    setTimeout( applyFilters , 800 );
-    
+
+    setTimeout(applyFilters, 800);
+
     // router.push({ 
     //   pathname: router.pathname, 
     //   query: { ...router.query, sortColumn: column, sortDirection: direction } 
@@ -319,7 +322,7 @@ export default function QuestionsPage() {
   //   return filteredQuestions.slice(startIndex, startIndex + itemsPerPage)
   // }
   const getPaginatedData = useMemo(() => {
-    
+
     if (filteredQuestions?.length > 0)
       return filteredQuestions;
 
@@ -328,7 +331,7 @@ export default function QuestionsPage() {
 
   const getSubtopicName = useCallback((subtopicId: string) =>
     subtopics.find(subtopic => subtopic.id === Number(subtopicId))?.name || "Unknown"
-  ,[subtopics])
+    , [subtopics])
 
   const filterOptions = useMemo(() => [
     {
@@ -371,7 +374,7 @@ export default function QuestionsPage() {
       ),
       sortable: true,
     },
-    { id: "subtopic", header: "Subtopic", cell: (question: QuestionDetails) => <>{question.subTopics.map( subtopic => <><span key={subtopic.id}>{getSubtopicName(`${subtopic.id}`)}</span><br/></>)}</>, sortable: true },
+    { id: "subtopic", header: "Subtopic", cell: (question: QuestionDetails) => <>{question.subTopics.map(subtopic => <><span key={subtopic.id}>{getSubtopicName(`${subtopic.id}`)}</span><br /></>)}</>, sortable: true },
     {
       id: "difficultyLevel",
       header: "Difficulty",
@@ -409,7 +412,7 @@ export default function QuestionsPage() {
       ),
       sortable: false
     },
-    { id: "createdAt", header: "Created At", cell: (question: QuestionDetails) => new Date(question.createdAt).toLocaleDateString('en-gb', {timeZone : 'utc'}), sortable: true },
+    { id: "createdAt", header: "Created At", cell: (question: QuestionDetails) => new Date(question.createdAt).toLocaleDateString('en-gb', { timeZone: 'utc' }), sortable: true },
     {
       id: "actions",
       header: "",
@@ -463,7 +466,7 @@ export default function QuestionsPage() {
     handleSort(column, direction as "asc" | "desc")
   }, [handleSort])
 
-  
+
   // const currentSortValue = useMemo(() => `${filters.sortColumn}_${filters.sortDirection}`, [filters.sortColumn, filters.sortDirection])
   const getDataComponent = useCallback(() => {
     const currentSortValue = `${filters.sortColumn}_${filters.sortDirection}`
@@ -506,7 +509,7 @@ export default function QuestionsPage() {
           data={getPaginatedData}
           columns={columns}
           keyExtractor={(item) => `${item.id}`}
-          onRowClick={(item) => handleViewQuestion(item.id)}
+          // onRowClick={(item) => handleViewQuestion(item.id)}
           sortColumn={filters.sortColumn}
           sortDirection={filters.sortDirection}
           onSort={handleSort}

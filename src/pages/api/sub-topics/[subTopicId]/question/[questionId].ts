@@ -5,12 +5,16 @@ import type { NextApiRequest, NextApiResponse } from "next";
 //linkQuestionToSubTopic
 export default async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<QuestionDetails|{error : string}>,
+  res: NextApiResponse<void|{error : string}>,
 ) {
-    const {subTopicId, questionId } = req.query
+  
+  if(req.method != 'POST')
+     return res.status(500).json({ error: 'Invalid request'});
+    
+  const {subTopicId, questionId } = req.query
     
     
-    console.log(`POST /api/sub-topic/${subTopicId}/question/${questionId} (App Router)`);
+    console.log(`POST /api/sub-topics/${subTopicId}/question/${questionId} (App Router)`);
 
     if(!questionId || isNaN(Number(questionId)) ){
         return res.status(200).json({error : 'Invalid question id'});
@@ -19,7 +23,7 @@ export default async function handler(
 
   
     try {
-      const route = `sub-topic/${subTopicId}/question/${questionId}`;
+      const route = `sub-topics/${subTopicId}/question/${questionId}`;
       const token = req.headers.authorization;
       const apiKey = process.env.API_KEY;
       const nodeServer = process.env.SERVER_BASE_URL;
@@ -40,10 +44,8 @@ export default async function handler(
         throw new Error('Failed to link question to subtopic');
       }
   
-      const response = await rawResponse.json()
-  
       // console.log('GET /api/questions (Response):', response);
-      return res.status(200).json(response);
+      return res.status(200).end('');
     } catch (error) {
       return res.status(500).json({ error: 'Link Question: ' + error.message });
     }

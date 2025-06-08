@@ -1,5 +1,5 @@
 
-import { ReactNode, useEffect, useState } from "react"
+import { ReactNode, useCallback, useEffect, useMemo, useState } from "react"
 import {
   Table,
   TableBody,
@@ -67,7 +67,7 @@ export function DataTable<T>({
     }
   }, [router.isReady, router.query, pagination])
   
-  const handleSort = (columnId: string) => {
+  const handleSort = useCallback((columnId: string) => {
     if (!onSort) return
     
     const newDirection = 
@@ -85,9 +85,9 @@ export function DataTable<T>({
     }, undefined, { shallow: true })
     
     onSort(columnId, newDirection)
-  }
+  }, [onSort, router, sortColumn, sortDirection]);
   
-  const handlePageChange = (page: number) => {
+  const handlePageChange = useCallback((page: number) => {
     if (!pagination) return
     
     // Update URL
@@ -98,9 +98,9 @@ export function DataTable<T>({
     }, undefined, { shallow: true })
     
     pagination.onPageChange(page)
-  }
+  }, [pagination, router])
   
-  const renderSortIcon = (columnId: string) => {
+  const renderSortIcon = useCallback((columnId: string) => {
     if (sortColumn !== columnId) {
       return <ChevronsUpDown className="ml-1 h-4 w-4" />
     }
@@ -108,7 +108,7 @@ export function DataTable<T>({
     return sortDirection === "asc" 
       ? <ChevronUp className="ml-1 h-4 w-4" />
       : <ChevronDown className="ml-1 h-4 w-4" />
-  }
+  }, [sortColumn, sortDirection] )
   
   return (
     <div className={cn("space-y-4", className)}>
