@@ -9,7 +9,7 @@ interface returnType {
     error?: string;
 }  
 
-async function handleFetchQuestionById(question_id?: number): Promise<QuestionDetails | {error? : string}> {
+async function handleFetchQuestionById(token: string, question_id?: number): Promise<QuestionDetails | {error? : string}> {
 
     try {
         
@@ -19,7 +19,8 @@ async function handleFetchQuestionById(question_id?: number): Promise<QuestionDe
                 method: 'GET',
                 headers: {
                     'Accept': 'application/json',
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    "Authorization" : `Bearer ${token}`
                 },
                 
             }
@@ -34,7 +35,7 @@ async function handleFetchQuestionById(question_id?: number): Promise<QuestionDe
     }
 }
 
-async function handleFetchQuestions(page_number: number, page_size: number, title?: string, sub_topic_id?: number): Promise<returnType> {
+async function handleFetchQuestions(token: string, page_number: number, page_size: number, title?: string, sub_topic_id?: number): Promise<returnType> {
 
     try {
         const params: QuestionReqParams = { page_number, page_size, title: title, sub_topic_id: sub_topic_id }
@@ -46,7 +47,8 @@ async function handleFetchQuestions(page_number: number, page_size: number, titl
                 method: 'GET',
                 headers: {
                     'Accept': 'application/json, text/plain, */*',
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    "Authorization" : `Bearer ${token}`
                 },
                 
             }
@@ -61,7 +63,7 @@ async function handleFetchQuestions(page_number: number, page_size: number, titl
     }
 }
 
-async function handleDeleteQuestion(question_id: number): Promise<{deleted : boolean , error? : string}> {
+async function handleDeleteQuestion(token: string, question_id: number): Promise<{deleted : boolean , error? : string}> {
 
     try {
         
@@ -71,7 +73,8 @@ async function handleDeleteQuestion(question_id: number): Promise<{deleted : boo
                 method: 'DELETE',
                 headers: {
                     'Accept': 'application/json',
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    "Authorization" : `Bearer ${token}`
                 },
                 
             }

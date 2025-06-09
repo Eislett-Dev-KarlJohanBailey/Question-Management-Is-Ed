@@ -10,7 +10,7 @@ interface returnType {
     error?: string;
 }  
 
-async function handleFetchSubTopics(page_number: number, page_size: number, topic_id?: number): Promise<returnType> {
+async function handleFetchSubTopics(token : string, page_number: number, page_size: number, topic_id?: number): Promise<returnType> {
 
     try {
         const params: SubTopicReqParams = { page_number, page_size, topic_id: topic_id }
@@ -22,7 +22,8 @@ async function handleFetchSubTopics(page_number: number, page_size: number, topi
                 method: 'GET',
                 headers: {
                     'Accept': 'application/json, text/plain, */*',
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    "Authorization" : `Bearer ${token}`
                 },
                 
             }

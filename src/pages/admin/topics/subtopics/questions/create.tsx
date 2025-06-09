@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useContext } from "react"
 import { useRouter } from "next/router"
 import { AdminLayout } from "@/components/layout/AdminLayout"
 import { Button } from "@/components/ui/button"
@@ -35,6 +35,7 @@ import { SubTopicDetails } from "@/models/subTopic/subTopicDetails"
 import { getQuestionFormData, getQuestionFormSubtopics, resetQuestionPageSlice, setQuestionFormData, setQuestionFormSubtopics } from "./slices/questions.slice"
 import { removeNulls } from "@/services/utils"
 import { displayErrorMessage, displaySuccessMessage } from "@/services/displayMessages"
+import { useAuth } from "@/contexts/AuthContext"
 
 // Mock data for demonstration
 const MOCK_SUBTOPICS = [
@@ -78,6 +79,7 @@ const MOCK_SUBTOPICS = [
 export default function CreateQuestionPage() {
   const router = useRouter()
   const dispatch = useAppDispatch();
+  const authContext = useContext(useAuth())
 
   const formData = useAppSelector(getQuestionFormData);
   const questionSubtopics = useAppSelector(getQuestionFormSubtopics);
@@ -118,7 +120,7 @@ export default function CreateQuestionPage() {
     console.log('Fetching sub topics');
     async function getSubTopics() {
       const topic_id = undefined
-      const results = await handleFetchSubTopics(1, 50, topic_id)
+      const results = await handleFetchSubTopics(authContext?.token, 1, 50, topic_id)
 
       if ((results as { error: string })?.error) {
         toast({ title: (results as { error: string })?.error, style: { background: 'red', color: 'white' }, duration: 3500 })
@@ -132,7 +134,7 @@ export default function CreateQuestionPage() {
     }
 
     getSubTopics()
-  }, [dispatch])
+  }, [authContext?.token, dispatch])
 
   // Update form data
   const handleInputChange = useCallback((field: keyof QuestionFormData, value: any) => {
@@ -406,7 +408,8 @@ export default function CreateQuestionPage() {
           method: 'POST',
           headers: {
             'Accept': 'application/json',
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            "Authorization" : `Bearer ${authContext.token}`
           },
           body: JSON.stringify(params),
 
@@ -438,7 +441,7 @@ export default function CreateQuestionPage() {
       displayErrorMessage('Failed to submit!')
 
     }
-  }, [dispatch, formData.content, formData?.description, formData?.difficultyLevel, formData.multipleChoiceOptions, formData?.tags, formData.title, formData?.totalPotentialMarks, formData.type, handleLinkSubtopics, questionSubtopics.length, router]);
+  }, [authContext.token, dispatch, formData.content, formData?.description, formData?.difficultyLevel, formData.multipleChoiceOptions, formData?.tags, formData.title, formData?.totalPotentialMarks, formData.type, handleLinkSubtopics, questionSubtopics.length, router]);
 
   const getSubtopicName = useCallback((id: number) =>
     subtopics.find(s => s.id === id)?.name || "Unknown", [subtopics])

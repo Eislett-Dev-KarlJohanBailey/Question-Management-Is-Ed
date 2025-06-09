@@ -191,7 +191,7 @@ export default function QuestionsPage() {
     console.log('Fetching questions');
     async function getQuestions() {
       dispatch(setQuestionsIsLoading(true))
-      const results = await handleFetchQuestions(questionReqParams?.page_number, questionReqParams?.page_size, questionReqParams?.title, questionReqParams?.sub_topic_id)
+      const results = await handleFetchQuestions(authContext?.token, questionReqParams?.page_number, questionReqParams?.page_size, questionReqParams?.title, questionReqParams?.sub_topic_id)
 
       if ((results as { error: string })?.error) {
         toast({ title: (results as { error: string })?.error, style: { background: 'red', color: 'white' }, duration: 3500 })
@@ -208,14 +208,14 @@ export default function QuestionsPage() {
     }
 
     getQuestions()
-  }, [questionReqParams?.page_number, questionReqParams?.page_size, questionReqParams?.title, questionReqParams?.sub_topic_id, dispatch])
+  }, [questionReqParams?.page_number, questionReqParams?.page_size, questionReqParams?.title, questionReqParams?.sub_topic_id, dispatch, authContext?.token])
 
   //  GET LIST OF SUB TOPICS
   useEffect(() => {
     console.log('Fetching sub topics');
     async function getSubTopics() {
       const topic_id = undefined
-      const results = await handleFetchSubTopics(1, 50, topic_id)
+      const results = await handleFetchSubTopics(authContext?.token, 1, 50, topic_id)
 
       if ((results as { error: string })?.error) {
         toast({ title: (results as { error: string })?.error, style: { background: 'red', color: 'white' }, duration: 3500 })
@@ -229,7 +229,7 @@ export default function QuestionsPage() {
     }
 
     getSubTopics()
-  }, [dispatch])
+  }, [authContext?.token, dispatch])
 
   const handleAddNew = useCallback(() => {
     router.push({
@@ -252,7 +252,7 @@ export default function QuestionsPage() {
     if (!deleteData.questionId) return
     dispatch(setQuestionTableDeleteData({ questionId: deleteData.questionId, showDeleteDialog: true, isDeleting: true }))
 
-    const result = await handleDeleteQuestion(deleteData.questionId)
+    const result = await handleDeleteQuestion(authContext?.token, deleteData.questionId)
 
     if (result.deleted)
       displaySuccessMessage('Deleted Question!')
@@ -262,7 +262,7 @@ export default function QuestionsPage() {
       dispatch(setQuestionTableDeleteData({ questionId: undefined, showDeleteDialog: false, isDeleting: false }))
 
     }, 1000)
-  }, [deleteData.questionId, dispatch])
+  }, [authContext?.token, deleteData.questionId, dispatch])
 
   const handleViewQuestion = useCallback((id: number | string) => {
     router.push(`/admin/topics/subtopics/questions/${id}`)

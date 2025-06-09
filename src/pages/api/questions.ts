@@ -95,6 +95,7 @@ async function POST(req: NextApiRequest, res: NextApiResponse<QuestionDetails | 
 
   try {
     const route = 'questions';
+    const token = req.headers.authorization;
     const apiKey = process.env.API_KEY;
     const nodeServer = process.env.SERVER_BASE_URL;
 
@@ -104,7 +105,8 @@ async function POST(req: NextApiRequest, res: NextApiResponse<QuestionDetails | 
         method: 'POST',
         headers: {
           'Accept': 'application/json',
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          "Authorization" : token
         },
         body: JSON.stringify(questionDetails)
       }
@@ -152,6 +154,7 @@ async function PUT(req: NextApiRequest, res: NextApiResponse<QuestionDetails | E
 
   try {
     const route = `questions/${id}`;
+    const token = req.headers.authorization;
     const apiKey = process.env.API_KEY;
     const nodeServer = process.env.SERVER_BASE_URL;
 
@@ -161,7 +164,8 @@ async function PUT(req: NextApiRequest, res: NextApiResponse<QuestionDetails | E
         method: 'PUT',
         headers: {
           'Accept': 'application/json',
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          "Authorization" : token
         },
         body: JSON.stringify(questionDetails)
       }

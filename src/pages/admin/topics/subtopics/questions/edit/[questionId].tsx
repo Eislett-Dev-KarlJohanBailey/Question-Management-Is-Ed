@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useContext } from "react"
 import { useRouter } from "next/router"
 import { AdminLayout } from "@/components/layout/AdminLayout"
 import { Button } from "@/components/ui/button"
@@ -36,11 +36,13 @@ import { getQuestionFormData, getQuestionFormIsLoading, getQuestionFormSubtopics
 import { removeNulls } from "@/services/utils"
 import { displayErrorMessage, displaySuccessMessage } from "@/services/displayMessages"
 import { handleFetchQuestionById } from "@/services/questions/questionsRequest"
+import { useAuth } from "@/contexts/AuthContext"
 
 
 export default function UpdateQuestionPage() {
   const router = useRouter()
   const dispatch = useAppDispatch();
+  const authContext = useContext(useAuth())
 
   const formData = useAppSelector(getQuestionFormData);
   const questionSubtopics = useAppSelector(getQuestionFormSubtopics);
@@ -72,7 +74,7 @@ export default function UpdateQuestionPage() {
     async function getQuestion() {
       dispatch(setQuestionFormIsLoading(true))
       let links = []  // existing subtopic links
-      const results = await handleFetchQuestionById(formData?.id as number)
+      const results = await handleFetchQuestionById(authContext?.token, formData?.id as number)
 
       if ((results as { error: string })?.error) {
         toast({ title: (results as { error: string })?.error, style: { background: 'red', color: 'white' }, duration: 3500 })
@@ -116,14 +118,14 @@ export default function UpdateQuestionPage() {
 
     if (formData.id)
       getQuestion()
-  }, [dispatch, formData.id])
+  }, [authContext?.token, dispatch, formData.id])
 
 
   //  GET LIST OF SUB TOPICS
   useEffect(() => {
     async function getSubTopics() {
       const topic_id = undefined
-      const results = await handleFetchSubTopics(1, 50, topic_id)
+      const results = await handleFetchSubTopics(authContext?.token, 1, 50, topic_id)
 
       if ((results as { error: string })?.error) {
         toast({ title: (results as { error: string })?.error, style: { background: 'red', color: 'white' }, duration: 3500 })
@@ -138,7 +140,7 @@ export default function UpdateQuestionPage() {
 
 
     getSubTopics()
-  }, [])
+  }, [authContext?.token])
 
 
   useEffect(() => {
@@ -437,7 +439,8 @@ export default function UpdateQuestionPage() {
           method: 'PUT',
           headers: {
             'Accept': 'application/json',
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            "Authorization" : `Bearer ${authContext.token}`
           },
           body: JSON.stringify(params),
 
@@ -474,7 +477,7 @@ export default function UpdateQuestionPage() {
       displayErrorMessage('Failed to submit!')
 
     }
-  }, [dispatch, formData.content, formData?.description, formData?.difficultyLevel, formData.id, formData.multipleChoiceOptions, formData?.tags, formData.title, formData?.totalPotentialMarks, formData.type, handleLinkSubtopics, questionSubtopics.length, router]);
+  }, [authContext.token, dispatch, formData.content, formData?.description, formData?.difficultyLevel, formData.id, formData.multipleChoiceOptions, formData?.tags, formData.title, formData?.totalPotentialMarks, formData.type, handleLinkSubtopics, handleUnLinkingSubtopics, questionSubtopics?.length, router]);
 
   const getSubtopicName = useCallback((id: number) =>
     subtopics.find(s => s.id === id)?.name || "Unknown", [subtopics])
