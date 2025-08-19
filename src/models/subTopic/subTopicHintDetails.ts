@@ -1,7 +1,7 @@
 export interface SubTopicHintDetails {
-    id? : number
-    title : string
-    subTopicId : number
-    content : string
-    createdAt : string
+  id?: string;
+  title: string;
+  subTopicId: string;
+  content: string;
+  createdAt: string;
 }

@@ -1,4 +1,3 @@
-
 import { DEFAULT_PAGE_SIZE } from "@/constants/tablePageSizes";
 import { QuestionFormData, QuestionType } from "@/lib/types";
 import { QuestionDetails } from "@/models/questions/questionDetails";
@@ -8,38 +7,38 @@ import { SubTopicDetails } from "@/models/subTopic/subTopicDetails";
 import { RootState } from "@/store/store";
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 
-type direction = 'asc' | 'desc'
-type array_operation = 'ADD' | 'REMOVE'
+type direction = "asc" | "desc";
+type array_operation = "ADD" | "REMOVE";
 interface QuestionReqParams {
-  page_number: number,
-  page_size: number,
-  sub_topic_id: number | undefined
-  title: string | undefined
+  page_number: number;
+  page_size: number;
+  sub_topic_id: string | undefined;
+  title: string | undefined;
 }
 
 interface FilterTypes {
-  sortColumn: string | undefined
-  sortDirection: direction
-  subtopicFilter: string | undefined
-  typeFilter: string | undefined
+  sortColumn: string | undefined;
+  sortDirection: direction;
+  subtopicFilter: string | undefined;
+  typeFilter: string | undefined;
 }
 
 interface QuestionPageSliceState {
-  questions: QuestionDetails[]
-  filteredQuestions: QuestionDetails[]
-  subtopics: SubTopicDetails[]
-  questionParams: QuestionReqParams
-  totalQuestion: number
-  filters: FilterTypes
+  questions: QuestionDetails[];
+  filteredQuestions: QuestionDetails[];
+  subtopics: SubTopicDetails[];
+  questionParams: QuestionReqParams;
+  totalQuestion: number;
+  filters: FilterTypes;
   delete: {
-    questionId: number | undefined,
-    isDeleting: boolean,
-    showDeleteDialog: boolean
-  },
-  isLoading: boolean // for questions grid
-  isLoadingFormData: boolean // for question form
-  questionFormData: QuestionFormData
-  subtopicsToLink: number[]
+    questionId: string | undefined;
+    isDeleting: boolean;
+    showDeleteDialog: boolean;
+  };
+  isLoading: boolean; // for questions grid
+  isLoadingFormData: boolean; // for question form
+  questionFormData: QuestionFormData;
+  subtopicsToLink: string[];
 }
 
 const initialState = {
@@ -49,20 +48,20 @@ const initialState = {
   questionParams: {
     page_number: 1,
     page_size: DEFAULT_PAGE_SIZE,
-    sub_topic_id: undefined as number | undefined, // selected subtopic
-    title: undefined
+    sub_topic_id: undefined as string | undefined, // selected subtopic
+    title: undefined,
   },
   totalQuestion: 0,
   filters: {
     sortColumn: undefined as string | undefined,
-    sortDirection: 'asc' as direction,
+    sortDirection: "asc" as direction,
     subtopicFilter: undefined as string | undefined,
     typeFilter: undefined as string | undefined,
   },
   delete: {
-    questionId: undefined as number | undefined,
+    questionId: undefined as string | undefined,
     isDeleting: false,
-    showDeleteDialog: false
+    showDeleteDialog: false,
   },
   isLoading: false,
   isLoadingFormData: false,
@@ -80,84 +79,129 @@ const initialState = {
       { id: 1, content: "", isCorrect: false },
       { id: 2, content: "", isCorrect: false },
       { id: 3, content: "", isCorrect: false },
-      { id: 4, content: "", isCorrect: false }
-    ]
+      { id: 4, content: "", isCorrect: false },
+    ],
+    explanation: "",
   },
-  subtopicsToLink: [] as number[]
-
-}
+  subtopicsToLink: [] as string[],
+};
 
 export const QuestionPageSlice = createSlice({
-  name: 'QuestionPageSlice',
+  name: "QuestionPageSlice",
   initialState,
   reducers: {
     resetQuestionPageSlice: (state: QuestionPageSliceState) => initialState,
 
-    setQuestions: (state: QuestionPageSliceState, action: PayloadAction<QuestionDetails[]>) => {
-      state.questions = action.payload ?? []
-      state.filteredQuestions = []
-
+    setQuestions: (
+      state: QuestionPageSliceState,
+      action: PayloadAction<QuestionDetails[]>
+    ) => {
+      state.questions = action.payload ?? [];
+      state.filteredQuestions = [];
     },
 
-    setFilteredQuestions: (state: QuestionPageSliceState, action: PayloadAction<QuestionDetails[]>) => {
-      state.filteredQuestions = action.payload ?? []
-
+    setFilteredQuestions: (
+      state: QuestionPageSliceState,
+      action: PayloadAction<QuestionDetails[]>
+    ) => {
+      state.filteredQuestions = action.payload ?? [];
     },
 
-    setQuestionSubtopics: (state: QuestionPageSliceState, action: PayloadAction<SubTopicDetails[]>) => {
-      state.subtopics = action.payload ?? []
+    setQuestionSubtopics: (
+      state: QuestionPageSliceState,
+      action: PayloadAction<SubTopicDetails[]>
+    ) => {
+      state.subtopics = action.payload ?? [];
     },
 
-    setQuestionReqParams: (state: QuestionPageSliceState, action: PayloadAction<Partial<QuestionReqParams>>) => {
-      state.questionParams = { ...state.questionParams, ...action.payload }
+    setQuestionReqParams: (
+      state: QuestionPageSliceState,
+      action: PayloadAction<Partial<QuestionReqParams>>
+    ) => {
+      state.questionParams = { ...state.questionParams, ...action.payload };
     },
 
-    setQuestionAmount: (state: QuestionPageSliceState, action: PayloadAction<number>) => {
-      state.totalQuestion = action.payload
+    setQuestionAmount: (
+      state: QuestionPageSliceState,
+      action: PayloadAction<number>
+    ) => {
+      state.totalQuestion = action.payload;
     },
 
-    setQuestionTableFilters: (state: QuestionPageSliceState, action: PayloadAction<Partial<FilterTypes>>) => {
-      state.filters = { ...state.filters, ...action.payload }
+    setQuestionTableFilters: (
+      state: QuestionPageSliceState,
+      action: PayloadAction<Partial<FilterTypes>>
+    ) => {
+      state.filters = { ...state.filters, ...action.payload };
     },
 
-    setQuestionTableDeleteData: (state: QuestionPageSliceState, action: PayloadAction<{ questionId: number | undefined, isDeleting: boolean, showDeleteDialog: boolean }>) => {
+    setQuestionTableDeleteData: (
+      state: QuestionPageSliceState,
+      action: PayloadAction<{
+        questionId: string | undefined;
+        isDeleting: boolean;
+        showDeleteDialog: boolean;
+      }>
+    ) => {
       state.delete = action.payload;
     },
 
-    setQuestionsIsLoading: (state: QuestionPageSliceState, action: PayloadAction<boolean>) => {
+    setQuestionsIsLoading: (
+      state: QuestionPageSliceState,
+      action: PayloadAction<boolean>
+    ) => {
       state.isLoading = action.payload;
     },
 
-    setQuestionFormIsLoading: (state: QuestionPageSliceState, action: PayloadAction<boolean>) => {
+    setQuestionFormIsLoading: (
+      state: QuestionPageSliceState,
+      action: PayloadAction<boolean>
+    ) => {
       state.isLoadingFormData = action.payload;
     },
 
     // for create form
-    setQuestionFormData: (state: QuestionPageSliceState, action: PayloadAction<{ field: keyof QuestionFormData, value: any }>) => {
-      state.questionFormData = { ...state.questionFormData, [action.payload.field]: action.payload.value }
+    setQuestionFormData: (
+      state: QuestionPageSliceState,
+      action: PayloadAction<{ field: keyof QuestionFormData; value: any }>
+    ) => {
+      state.questionFormData = {
+        ...state.questionFormData,
+        [action.payload.field]: action.payload.value,
+      };
     },
 
     // for create form
-    setAllQuestionFormData: (state: QuestionPageSliceState, action: PayloadAction<QuestionFormData>) => {
-      state.questionFormData = { ...action.payload }
+    setAllQuestionFormData: (
+      state: QuestionPageSliceState,
+      action: PayloadAction<QuestionFormData>
+    ) => {
+      state.questionFormData = { ...action.payload };
     },
 
-    setQuestionFormSubtopics: (state: QuestionPageSliceState, action: PayloadAction<{ operation_type: array_operation, value: number }>) => {
-      if (action.payload.operation_type === 'ADD')
-        state.subtopicsToLink = [...state.subtopicsToLink, action.payload.value]
-      if (action.payload.operation_type === 'REMOVE')
-        state.subtopicsToLink = state.subtopicsToLink.filter(id => id != action.payload.value)
+    setQuestionFormSubtopics: (
+      state: QuestionPageSliceState,
+      action: PayloadAction<{ operation_type: array_operation; value: string }>
+    ) => {
+      if (action.payload.operation_type === "ADD")
+        state.subtopicsToLink = [
+          ...state.subtopicsToLink,
+          action.payload.value,
+        ];
+      if (action.payload.operation_type === "REMOVE")
+        state.subtopicsToLink = state.subtopicsToLink.filter(
+          (id) => id != action.payload.value
+        );
     },
 
-    setAllQuestionFormSubtopics: (state: QuestionPageSliceState, action: PayloadAction<number[]>) => {
-      state.subtopicsToLink = action.payload ?? []
+    setAllQuestionFormSubtopics: (
+      state: QuestionPageSliceState,
+      action: PayloadAction<string[]>
+    ) => {
+      state.subtopicsToLink = action.payload ?? [];
     },
-
-
-
-
-  }
-})
+  },
+});
 
 // export reducer to be added in src/store/store.ts
 export default QuestionPageSlice.reducer;
@@ -177,18 +221,29 @@ export const {
   setAllQuestionFormData,
   setQuestionFormData,
   setQuestionFormSubtopics,
-  setAllQuestionFormSubtopics
+  setAllQuestionFormSubtopics,
 } = QuestionPageSlice.actions;
 
-export const getQuestionReqParams = (state: RootState) => state.QuestionPageSlice.questionParams;
-export const getQuestions = (state: RootState) => state.QuestionPageSlice.questions;
-export const getFilteredQuestions = (state: RootState) => state.QuestionPageSlice.filteredQuestions;
-export const getQuestionSubtopics = (state: RootState) => state.QuestionPageSlice.subtopics;
-export const getQuestionAmt = (state: RootState) => state.QuestionPageSlice.totalQuestion;
-export const getQuestionTableFilters = (state: RootState) => state.QuestionPageSlice.filters;
-export const getQuestionTableDeleteData = (state: RootState) => state.QuestionPageSlice.delete;
-export const getQuestionsIsLoading = (state: RootState) => state.QuestionPageSlice.isLoading;
-export const getQuestionFormIsLoading = (state: RootState) => state.QuestionPageSlice.isLoadingFormData;
+export const getQuestionReqParams = (state: RootState) =>
+  state.QuestionPageSlice.questionParams;
+export const getQuestions = (state: RootState) =>
+  state.QuestionPageSlice.questions;
+export const getFilteredQuestions = (state: RootState) =>
+  state.QuestionPageSlice.filteredQuestions;
+export const getQuestionSubtopics = (state: RootState) =>
+  state.QuestionPageSlice.subtopics;
+export const getQuestionAmt = (state: RootState) =>
+  state.QuestionPageSlice.totalQuestion;
+export const getQuestionTableFilters = (state: RootState) =>
+  state.QuestionPageSlice.filters;
+export const getQuestionTableDeleteData = (state: RootState) =>
+  state.QuestionPageSlice.delete;
+export const getQuestionsIsLoading = (state: RootState) =>
+  state.QuestionPageSlice.isLoading;
+export const getQuestionFormIsLoading = (state: RootState) =>
+  state.QuestionPageSlice.isLoadingFormData;
 
-export const getQuestionFormData = (state: RootState) => state.QuestionPageSlice.questionFormData as QuestionDetails;
-export const getQuestionFormSubtopics = (state: RootState) => state.QuestionPageSlice.subtopicsToLink;
+export const getQuestionFormData = (state: RootState) =>
+  state.QuestionPageSlice.questionFormData as QuestionDetails;
+export const getQuestionFormSubtopics = (state: RootState) =>
+  state.QuestionPageSlice.subtopicsToLink;
