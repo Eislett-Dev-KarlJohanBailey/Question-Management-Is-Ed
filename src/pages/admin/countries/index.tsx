@@ -1,221 +1,230 @@
-
-import { useState } from "react"
-import { AdminLayout } from "@/components/layout/AdminLayout"
-import { DataManagementLayout } from "@/components/layout/DataManagementLayout"
-import { DataTable } from "@/components/data/DataTable"
-import { DataFormDrawer } from "@/components/data/DataFormDrawer"
-import { DeleteConfirmationDialog } from "@/components/data/DeleteConfirmationDialog"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Edit, Eye, MoreHorizontal, Trash } from "lucide-react"
+import { useState } from "react";
+import { AdminLayout } from "@/components/layout/AdminLayout";
+import { DataManagementLayout } from "@/components/layout/DataManagementLayout";
+import { DataTable } from "@/components/data/DataTable";
+import { DataFormDrawer } from "@/components/data/DataFormDrawer";
+import { DeleteConfirmationDialog } from "@/components/data/DeleteConfirmationDialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Edit, Eye, MoreHorizontal, Trash } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
-  DropdownMenuTrigger
-} from "@/components/ui/dropdown-menu"
-import { useRouter } from "next/router"
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useRouter } from "next/router";
 
 // Mock data for demonstration
 const MOCK_COUNTRIES = [
-  { 
-    id: "1", 
+  {
+    id: "1",
     name: "United States",
-    createdAt: "2025-01-15"
+    createdAt: "2025-01-15",
   },
-  { 
-    id: "2", 
+  {
+    id: "2",
     name: "Canada",
-    createdAt: "2025-01-16"
+    createdAt: "2025-01-16",
   },
-  { 
-    id: "3", 
+  {
+    id: "3",
     name: "United Kingdom",
-    createdAt: "2025-01-17"
+    createdAt: "2025-01-17",
   },
-  { 
-    id: "4", 
+  {
+    id: "4",
     name: "Australia",
-    createdAt: "2025-01-18"
+    createdAt: "2025-01-18",
   },
-  { 
-    id: "5", 
+  {
+    id: "5",
     name: "Germany",
-    createdAt: "2025-01-19"
-  }
-]
+    createdAt: "2025-01-19",
+  },
+];
 
 // Country form type
 interface CountryFormData {
-  id?: string
-  name: string
-  createdAt?: string
+  id?: string;
+  name: string;
+  createdAt?: string;
 }
 
 export default function CountriesPage() {
-  const router = useRouter()
-  const [countries, setCountries] = useState(MOCK_COUNTRIES)
-  const [isLoading, setIsLoading] = useState(false)
-  const [sortColumn, setSortColumn] = useState<string>("name")
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
-  const [currentPage, setCurrentPage] = useState(1)
+  const router = useRouter();
+  const [countries, setCountries] = useState(MOCK_COUNTRIES);
+  const [isLoading, setIsLoading] = useState(false);
+  const [sortColumn, setSortColumn] = useState<string>("name");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  const [currentPage, setCurrentPage] = useState(1);
   const [filters, setFilters] = useState({
-    search: ""
-  })
-  
+    search: "",
+  });
+
   // Form drawer state
-  const [formDrawerOpen, setFormDrawerOpen] = useState(false)
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [formDrawerOpen, setFormDrawerOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentCountry, setCurrentCountry] = useState<CountryFormData>({
-    name: ""
-  })
-  const [isEditMode, setIsEditMode] = useState(false)
-  
+    name: "",
+  });
+  const [isEditMode, setIsEditMode] = useState(false);
+
   // Delete dialog state
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [isDeleting, setIsDeleting] = useState(false)
-  const [countryToDelete, setCountryToDelete] = useState<string | null>(null)
-  
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [countryToDelete, setCountryToDelete] = useState<string | null>(null);
+
   // Handle form input changes
   const handleFormChange = (field: keyof CountryFormData, value: string) => {
-    setCurrentCountry(prev => ({
+    setCurrentCountry((prev) => ({
       ...prev,
-      [field]: value
-    }))
-  }
-  
+      [field]: value,
+    }));
+  };
+
   // Open form drawer for creating a new country
   const handleAddNew = () => {
     setCurrentCountry({
-      name: ""
-    })
-    setIsEditMode(false)
-    setFormDrawerOpen(true)
-  }
-  
+      name: "",
+    });
+    setIsEditMode(false);
+    setFormDrawerOpen(true);
+  };
+
   // Open form drawer for editing a country
   const handleEdit = (id: string) => {
-    const countryToEdit = countries.find(country => country.id === id)
+    const countryToEdit = countries.find((country) => country.id === id);
     if (countryToEdit) {
       setCurrentCountry({
         id: countryToEdit.id,
         name: countryToEdit.name,
-        createdAt: countryToEdit.createdAt
-      })
-      setIsEditMode(true)
-      setFormDrawerOpen(true)
+        createdAt: countryToEdit.createdAt,
+      });
+      setIsEditMode(true);
+      // Small delay to ensure dropdown closes before modal opens
+      setTimeout(() => {
+        setFormDrawerOpen(true);
+      }, 100);
     }
-  }
-  
+  };
+
   // Handle form submission
   const handleFormSubmit = () => {
-    setIsSubmitting(true)
-    
+    setIsSubmitting(true);
+
     // Simulate API call
     setTimeout(() => {
       if (isEditMode && currentCountry.id) {
         // Update existing country
-        setCountries(prev => 
-          prev.map(country => 
-            country.id === currentCountry.id 
-              ? { 
-                  ...country, 
-                  name: currentCountry.name
-                } 
+        setCountries((prev) =>
+          prev.map((country) =>
+            country.id === currentCountry.id
+              ? {
+                  ...country,
+                  name: currentCountry.name,
+                }
               : country
           )
-        )
+        );
       } else {
         // Create new country
         const newCountry = {
           id: `${countries.length + 1}`,
           name: currentCountry.name,
-          createdAt: new Date().toISOString().split("T")[0]
-        }
-        setCountries(prev => [...prev, newCountry])
+          createdAt: new Date().toISOString().split("T")[0],
+        };
+        setCountries((prev) => [...prev, newCountry]);
       }
-      
-      setIsSubmitting(false)
-      setFormDrawerOpen(false)
-    }, 1000)
-  }
-  
+
+      setIsSubmitting(false);
+      setFormDrawerOpen(false);
+    }, 1000);
+  };
+
   // Open delete confirmation dialog
   const handleDeleteClick = (id: string) => {
-    setCountryToDelete(id)
-    setDeleteDialogOpen(true)
-  }
-  
+    setCountryToDelete(id);
+    setDeleteDialogOpen(true);
+  };
+
   // Handle delete confirmation
   const handleDeleteConfirm = () => {
-    if (!countryToDelete) return
-    
-    setIsDeleting(true)
-    
+    if (!countryToDelete) return;
+
+    setIsDeleting(true);
+
     // Simulate API call
     setTimeout(() => {
-      setCountries(countries.filter(country => country.id !== countryToDelete))
-      setIsDeleting(false)
-      setDeleteDialogOpen(false)
-      setCountryToDelete(null)
-    }, 1000)
-  }
-  
+      setCountries(
+        countries.filter((country) => country.id !== countryToDelete)
+      );
+      setIsDeleting(false);
+      setDeleteDialogOpen(false);
+      setCountryToDelete(null);
+    }, 1000);
+  };
+
   // Simulate viewing a country
   const handleViewCountry = (id: string) => {
-    router.push(`/admin/countries/${id}`)
-  }
-  
+    router.push(`/admin/countries/${id}`);
+  };
+
   // Simulate searching
   const handleSearch = (value: string) => {
-    setFilters({...filters, search: value})
-    setCurrentPage(1)
-  }
-  
+    setFilters({ ...filters, search: value });
+    setCurrentPage(1);
+  };
+
   // Simulate sorting
   const handleSort = (column: string, direction: "asc" | "desc") => {
-    setSortColumn(column)
-    setSortDirection(direction)
-  }
-  
+    setSortColumn(column);
+    setSortDirection(direction);
+  };
+
   // Simulate refreshing data
   const handleRefresh = () => {
-    setIsLoading(true)
+    setIsLoading(true);
     // In a real app, you would fetch fresh data from the API
     setTimeout(() => {
-      setIsLoading(false)
-    }, 500)
-  }
-  
+      setIsLoading(false);
+    }, 500);
+  };
+
   // Table columns configuration
   const columns = [
     {
       id: "id",
       header: "ID",
-      cell: (country: typeof MOCK_COUNTRIES[0]) => <span className="text-muted-foreground text-sm">{country.id}</span>,
-      sortable: true
+      cell: (country: (typeof MOCK_COUNTRIES)[0]) => (
+        <span className="text-muted-foreground text-sm">{country.id}</span>
+      ),
+      sortable: true,
     },
     {
       id: "name",
       header: "Country Name",
-      cell: (country: typeof MOCK_COUNTRIES[0]) => <span className="font-medium">{country.name}</span>,
-      sortable: true
+      cell: (country: (typeof MOCK_COUNTRIES)[0]) => (
+        <span className="font-medium">{country.name}</span>
+      ),
+      sortable: true,
     },
     {
       id: "createdAt",
       header: "Created At",
-      cell: (country: typeof MOCK_COUNTRIES[0]) => new Date(country.createdAt).toLocaleDateString(),
-      sortable: true
+      cell: (country: (typeof MOCK_COUNTRIES)[0]) =>
+        new Date(country.createdAt).toLocaleDateString(),
+      sortable: true,
     },
     {
       id: "actions",
       header: "",
-      cell: (country: typeof MOCK_COUNTRIES[0]) => (
+      cell: (country: (typeof MOCK_COUNTRIES)[0]) => (
         <div className="flex justify-end">
-          <DropdownMenu>
+          <DropdownMenu key={`${country.id}-${formDrawerOpen}`}>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
                 <MoreHorizontal className="h-4 w-4" />
@@ -224,17 +233,30 @@ export default function CountriesPage() {
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>Actions</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => handleViewCountry(country.id)}>
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleViewCountry(country.id);
+                }}
+              >
                 <Eye className="mr-2 h-4 w-4" />
                 View
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleEdit(country.id)}>
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleEdit(country.id);
+                }}
+              >
                 <Edit className="mr-2 h-4 w-4" />
                 Edit
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem 
-                onClick={() => handleDeleteClick(country.id)}
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDeleteClick(country.id);
+                }}
                 className="text-destructive focus:text-destructive"
               >
                 <Trash className="mr-2 h-4 w-4" />
@@ -243,10 +265,10 @@ export default function CountriesPage() {
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-      )
-    }
-  ]
-  
+      ),
+    },
+  ];
+
   // Sort options
   const sortOptions = [
     { label: "Name (A-Z)", value: "name_asc" },
@@ -254,15 +276,15 @@ export default function CountriesPage() {
     { label: "ID (Ascending)", value: "id_asc" },
     { label: "ID (Descending)", value: "id_desc" },
     { label: "Newest First", value: "createdAt_desc" },
-    { label: "Oldest First", value: "createdAt_asc" }
-  ]
-  
+    { label: "Oldest First", value: "createdAt_asc" },
+  ];
+
   // Handle sort dropdown change
   const handleSortChange = (value: string) => {
-    const [column, direction] = value.split("_")
-    handleSort(column, direction as "asc" | "desc")
-  }
-  
+    const [column, direction] = value.split("_");
+    handleSort(column, direction as "asc" | "desc");
+  };
+
   return (
     <AdminLayout>
       <DataManagementLayout
@@ -289,7 +311,7 @@ export default function CountriesPage() {
           pagination={{
             currentPage,
             totalPages: Math.ceil(countries.length / 10),
-            onPageChange: setCurrentPage
+            onPageChange: setCurrentPage,
           }}
           emptyState={
             <div className="flex flex-col items-center justify-center py-8">
@@ -299,13 +321,26 @@ export default function CountriesPage() {
           }
         />
       </DataManagementLayout>
-      
+
       {/* Country Form Drawer */}
       <DataFormDrawer
         title={isEditMode ? "Edit Country" : "Add New Country"}
-        description={isEditMode ? "Update country details" : "Create a new country"}
+        description={
+          isEditMode ? "Update country details" : "Create a new country"
+        }
         open={formDrawerOpen}
-        onOpenChange={setFormDrawerOpen}
+        onOpenChange={(open) => {
+          setFormDrawerOpen(open);
+          // Restore focus after modal closes
+          if (!open) {
+            setTimeout(() => {
+              const activeElement = document.activeElement as HTMLElement;
+              if (activeElement && activeElement.blur) {
+                activeElement.blur();
+              }
+            }, 150);
+          }
+        }}
         onSubmit={handleFormSubmit}
         isSubmitting={isSubmitting}
         submitLabel={isEditMode ? "Save Changes" : "Create Country"}
@@ -324,7 +359,7 @@ export default function CountriesPage() {
               />
             </div>
           )}
-          
+
           <div className="space-y-2">
             <Label htmlFor="name">Country Name</Label>
             <Input
@@ -334,7 +369,7 @@ export default function CountriesPage() {
               placeholder="Enter country name"
             />
           </div>
-          
+
           {isEditMode && currentCountry.createdAt && (
             <div className="space-y-2">
               <Label htmlFor="createdAt">Created At</Label>
@@ -349,7 +384,7 @@ export default function CountriesPage() {
           )}
         </div>
       </DataFormDrawer>
-      
+
       {/* Delete Confirmation Dialog */}
       <DeleteConfirmationDialog
         open={deleteDialogOpen}
@@ -360,5 +395,5 @@ export default function CountriesPage() {
         description="Are you sure you want to delete this country? This action cannot be undone."
       />
     </AdminLayout>
-  )
+  );
 }
