@@ -111,9 +111,7 @@ export default function QuestionsPage() {
 
     if (filters.subtopicFilter) {
       result = result.filter((question) =>
-        question.subTopics
-          .map((el) => el.id)
-          .includes(Number(filters.subtopicFilter))
+        question.subTopics.map((el) => el.id).includes(filters.subtopicFilter)
       );
     }
 
@@ -130,11 +128,13 @@ export default function QuestionsPage() {
 
       if (filters.sortColumn === "subtopic") {
         const subtopicA =
-          subtopics.find((s) => a.subTopics.map((el) => el.id).includes(s.id))
-            ?.name || "";
+          subtopics.find((s) =>
+            a.subTopics.map((el) => el.id).includes(String(s.id))
+          )?.name || "";
         const subtopicB =
-          subtopics.find((s) => b.subTopics.map((el) => el.id).includes(s.id))
-            ?.name || "";
+          subtopics.find((s) =>
+            b.subTopics.map((el) => el.id).includes(String(s.id))
+          )?.name || "";
         comparison = subtopicA.localeCompare(subtopicB);
       } else if (typeof valA === "string" && typeof valB === "string") {
         comparison = valA.localeCompare(valB);
@@ -305,7 +305,7 @@ export default function QuestionsPage() {
   );
 
   const handleDeleteClick = useCallback(
-    (id: number) => {
+    (id: string) => {
       // setQuestionToDelete(id)
       // setDeleteDialogOpen(true)
       dispatch(
@@ -439,7 +439,7 @@ export default function QuestionsPage() {
 
   const getSubtopicName = useCallback(
     (subtopicId: string) =>
-      subtopics.find((subtopic) => subtopic.id === Number(subtopicId))?.name ||
+      subtopics.find((subtopic) => subtopic.id === subtopicId)?.name ||
       "Unknown",
     [subtopics]
   );

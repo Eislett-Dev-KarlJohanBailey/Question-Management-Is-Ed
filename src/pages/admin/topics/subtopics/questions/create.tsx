@@ -96,7 +96,7 @@ export default function CreateQuestionPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [subtopics, setSubtopics] = useState<SubTopicDetails[]>([]);
   const [currentTag, setCurrentTag] = useState("");
-  const [currentSubtopic, setCurrentSubtopic] = useState<number | undefined>(
+  const [currentSubtopic, setCurrentSubtopic] = useState<string | undefined>(
     undefined
   );
 
@@ -123,7 +123,7 @@ export default function CreateQuestionPage() {
       dispatch(
         setQuestionFormSubtopics({
           operation_type: "ADD",
-          value: Number(router.query.subtopic),
+          value: String(router.query.subtopic),
         })
       );
     }
@@ -351,22 +351,24 @@ export default function CreateQuestionPage() {
   );
 
   const handleSubtopic = useCallback(
-    (id: number) => {
-      // setFormData(prev => ({
-      //   ...prev,
-      //   subTopics: prev.subTopics.filter(subtopic => subtopic.id !== id)
-
-      // }))
-
+    (id: string) => {
       dispatch(
-        setQuestionFormSubtopics({ operation_type: "REMOVE", value: id })
+        setQuestionFormSubtopics({
+          operation_type: "REMOVE",
+          value: id,
+        })
       );
     },
     [dispatch]
   );
 
   const handleAddSubtopic = useCallback(() => {
+    console.log("handleAddSubtopic called with:", {
+      currentSubtopic,
+      questionSubtopics,
+    });
     if (currentSubtopic && !questionSubtopics.includes(currentSubtopic)) {
+      console.log("Adding subtopic:", currentSubtopic);
       dispatch(
         setQuestionFormSubtopics({
           operation_type: "ADD",
@@ -374,6 +376,11 @@ export default function CreateQuestionPage() {
         })
       );
       setCurrentSubtopic(undefined);
+    } else {
+      console.log("Cannot add subtopic:", {
+        hasCurrentSubtopic: !!currentSubtopic,
+        alreadyExists: questionSubtopics.includes(currentSubtopic || ""),
+      });
     }
   }, [currentSubtopic, dispatch, questionSubtopics]);
 
@@ -389,7 +396,11 @@ export default function CreateQuestionPage() {
 
   // Handle linking question to sub topic
   const handleLinkSubtopics = useCallback(
-    async (questionId: number) => {
+    async (questionId: string) => {
+      console.log("handleLinkSubtopics called with:", {
+        questionId,
+        questionSubtopics,
+      });
       if (questionSubtopics.length === 0) return true;
       let linkSuccess = true;
 
@@ -409,7 +420,10 @@ export default function CreateQuestionPage() {
           if (!rawResponse.ok) {
             linkSuccess = false;
             break;
-          } else if (rawResponse.ok && subtopicId === questionSubtopics[-1])
+          } else if (
+            rawResponse.ok &&
+            subtopicId === questionSubtopics[questionSubtopics.length - 1]
+          )
             linkSuccess = true;
         }
       } catch (e) {
@@ -489,6 +503,15 @@ export default function CreateQuestionPage() {
         return;
       }
 
+      if (!formData.explanation.trim()) {
+        // alert("Please enter explanation")
+        displayErrorMessage(
+          "Missing required fields",
+          "Please enter explanation"
+        );
+        return;
+      }
+
       setIsSubmitting(true);
 
       try {
@@ -512,6 +535,7 @@ export default function CreateQuestionPage() {
               ? formData?.multipleChoiceOptions
               : null,
           isTrue: isTrue,
+          explanation: formData?.explanation,
         };
 
         params = removeNulls(params) as any;
@@ -528,6 +552,7 @@ export default function CreateQuestionPage() {
         const data: QuestionDetails = await rawResponse.json();
 
         let linkedAllSubtopics = true;
+        console.log("data", data);
         // if created successfully link question to subtopic
         if (data?.id && questionSubtopics.length > 0) {
           linkedAllSubtopics = await handleLinkSubtopics(data.id);
@@ -563,6 +588,7 @@ export default function CreateQuestionPage() {
       formData.title,
       formData?.totalPotentialMarks,
       formData.type,
+      formData.explanation,
       handleLinkSubtopics,
       questionSubtopics.length,
       router,
@@ -570,7 +596,7 @@ export default function CreateQuestionPage() {
   );
 
   const getSubtopicName = useCallback(
-    (id: number) => subtopics.find((s) => s.id === id)?.name || "Unknown",
+    (id: string) => subtopics.find((s) => s.id === id)?.name || "Unknown",
     [subtopics]
   );
 
@@ -817,19 +843,20 @@ export default function CreateQuestionPage() {
                 </div>
                 <div className="flex gap-2">
                   <Select
-                    value={currentSubtopic ? `${currentSubtopic}` : undefined}
-                    onValueChange={(value) =>
-                      setCurrentSubtopic(
-                        typeof value === "string" ? Number(value) : value
-                      )
-                    }
+                    value={currentSubtopic}
+                    onValueChange={(value) => {
+                      setCurrentSubtopic(value);
+                    }}
                   >
                     <SelectTrigger id="subtopic">
                       <SelectValue placeholder="Select a subtopic" />
                     </SelectTrigger>
                     <SelectContent>
                       {subtopics.map((subtopic) => (
-                        <SelectItem key={subtopic.id} value={`${subtopic.id}`}>
+                        <SelectItem
+                          key={subtopic.id}
+                          value={String(subtopic.id)}
+                        >
                           {subtopic.name}
                         </SelectItem>
                       ))}
@@ -938,6 +965,22 @@ export default function CreateQuestionPage() {
             </CardContent>
           </Card>
 
+          {/* Explanation */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Explanation</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Textarea
+                value={formData.explanation}
+                onChange={(e) =>
+                  handleInputChange("explanation", e.target.value)
+                }
+                placeholder="Enter the explanation"
+              />
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle>Preview</CardTitle>
@@ -1017,7 +1060,7 @@ export default function CreateQuestionPage() {
                         {questionSubtopics?.length > 0 ? (
                           questionSubtopics.map((subtopic) => (
                             <p key={`subtopic_${subtopic}`}>
-                              {getSubtopicName(subtopic as number)}
+                              {getSubtopicName(subtopic)}
                             </p>
                           ))
                         ) : (

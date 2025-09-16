@@ -1,38 +1,38 @@
-
 export enum QuestionType {
   MULTIPLE_CHOICE = "multiple_choice",
-  TRUE_FALSE = "true_or_false"
+  TRUE_FALSE = "true_or_false",
 }
 
 export interface Question {
-  id: string
-  title: string
-  description?: string
-  content: string
-  tags: string[]
-  createdAt: string
-  type: QuestionType
-  totalPotentialMarks: number
-  difficultyLevel: number
-  subtopicId: string
-  options?: QuestionOption[]
+  id: string;
+  title: string;
+  description?: string;
+  content: string;
+  tags: string[];
+  createdAt: string;
+  type: QuestionType;
+  totalPotentialMarks: number;
+  difficultyLevel: number;
+  subtopicId: string;
+  options?: QuestionOption[];
 }
 
 export interface QuestionOption {
-  id: number
-  content: string
-  isCorrect: boolean
+  id: number;
+  content: string;
+  isCorrect: boolean;
 }
 
 export interface QuestionFormData {
-  id?: number
-  title: string
-  description: string
-  content: string
-  tags: string[]
-  type: QuestionType
-  totalPotentialMarks: number
-  difficultyLevel: number
+  id?: number;
+  title: string;
+  description: string;
+  content: string;
+  tags: string[];
+  type: QuestionType;
+  totalPotentialMarks: number;
+  difficultyLevel: number;
   // subtopicId: string
-  multipleChoiceOptions: QuestionOption[]
+  multipleChoiceOptions: QuestionOption[];
+  explanation: string;
 }

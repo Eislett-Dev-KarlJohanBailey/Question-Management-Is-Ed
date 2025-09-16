@@ -62,10 +62,10 @@ export default function UpdateQuestionPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [subtopics, setSubtopics] = useState<SubTopicDetails[]>([]);
   const [currentTag, setCurrentTag] = useState("");
-  const [currentSubtopic, setCurrentSubtopic] = useState<number | undefined>(
+  const [currentSubtopic, setCurrentSubtopic] = useState<string | undefined>(
     undefined
   );
-  const [existingSubtopicLinks, setExistingSubtopicLinks] = useState<number[]>(
+  const [existingSubtopicLinks, setExistingSubtopicLinks] = useState<string[]>(
     []
   );
 
@@ -80,7 +80,7 @@ export default function UpdateQuestionPage() {
       dispatch(
         setQuestionFormData({
           field: "id",
-          value: Number(router.query.questionId),
+          value: String(router.query.questionId),
         })
       );
     }
@@ -99,7 +99,7 @@ export default function UpdateQuestionPage() {
       let links = []; // existing subtopic links
       const results = await handleFetchQuestionById(
         authContext?.token,
-        formData?.id as number
+        formData?.id as string
       );
 
       if ((results as { error: string })?.error) {
@@ -122,6 +122,7 @@ export default function UpdateQuestionPage() {
             ?.totalPotentialMarks,
           difficultyLevel: (results as QuestionDetails)?.difficultyLevel,
           type: (results as QuestionDetails)?.type,
+          explanation: (results as QuestionDetails)?.explanation || "",
         };
 
         let newOptions = [];
@@ -146,7 +147,9 @@ export default function UpdateQuestionPage() {
             [];
         }
         data["multipleChoiceOptions"] = newOptions;
-        links = (results as QuestionDetails)?.subTopics.map((el) => el.id);
+        links = (results as QuestionDetails)?.subTopics.map((el) =>
+          String(el.id)
+        );
 
         // console.log('Question data', data)
         dispatch(setAllQuestionFormData(data as any));
@@ -354,7 +357,7 @@ export default function UpdateQuestionPage() {
   );
 
   const handleSubtopic = useCallback(
-    (id: number) => {
+    (id: string) => {
       dispatch(
         setQuestionFormSubtopics({ operation_type: "REMOVE", value: id })
       );
@@ -386,7 +389,7 @@ export default function UpdateQuestionPage() {
 
   // Handle linking question to sub topic
   const handleLinkSubtopics = useCallback(
-    async (questionId: number) => {
+    async (questionId: string) => {
       if (questionSubtopics.length === 0) return true;
       let linkSuccess = true;
 
@@ -424,7 +427,7 @@ export default function UpdateQuestionPage() {
 
   // Handle linking question to sub topic
   const handleUnLinkingSubtopics = useCallback(
-    async (questionId: number) => {
+    async (questionId: string) => {
       if (existingSubtopicLinks.length === 0) return true;
       let unLinkSuccess = true;
 
@@ -446,7 +449,10 @@ export default function UpdateQuestionPage() {
           if (!rawResponse.ok) {
             unLinkSuccess = false;
             break;
-          } else if (rawResponse.ok && subtopicId === questionSubtopics[-1])
+          } else if (
+            rawResponse.ok &&
+            subtopicId === questionSubtopics[questionSubtopics.length - 1]
+          )
             unLinkSuccess = true;
         }
       } catch (e) {
@@ -555,6 +561,7 @@ export default function UpdateQuestionPage() {
                 ? formData?.multipleChoiceOptions
                 : null,
             isTrue: isTrue,
+            explanation: formData?.explanation,
           },
           id: formData.id,
         };
@@ -576,10 +583,10 @@ export default function UpdateQuestionPage() {
         let unlinkSuccessful = true;
         // if created successfully link question to subtopic
         if (data?.id) {
-          linkedAllSubtopics = await handleLinkSubtopics(data.id);
+          linkedAllSubtopics = await handleLinkSubtopics(String(data.id));
         }
         if (data?.id) {
-          unlinkSuccessful = await handleUnLinkingSubtopics(data.id);
+          unlinkSuccessful = await handleUnLinkingSubtopics(String(data.id));
         }
 
         if (!linkedAllSubtopics || !unlinkSuccessful || !data.id)
@@ -613,6 +620,7 @@ export default function UpdateQuestionPage() {
       formData.title,
       formData?.totalPotentialMarks,
       formData.type,
+      formData?.explanation,
       handleLinkSubtopics,
       handleUnLinkingSubtopics,
       questionSubtopics?.length,
@@ -621,7 +629,7 @@ export default function UpdateQuestionPage() {
   );
 
   const getSubtopicName = useCallback(
-    (id: number) => subtopics.find((s) => s.id === id)?.name || "Unknown",
+    (id: string) => subtopics.find((s) => s.id === id)?.name || "Unknown",
     [subtopics]
   );
 
@@ -868,19 +876,15 @@ export default function UpdateQuestionPage() {
                 </div>
                 <div className="flex gap-2">
                   <Select
-                    value={currentSubtopic ? `${currentSubtopic}` : undefined}
-                    onValueChange={(value) =>
-                      setCurrentSubtopic(
-                        typeof value === "string" ? Number(value) : value
-                      )
-                    }
+                    value={currentSubtopic}
+                    onValueChange={(value) => setCurrentSubtopic(value)}
                   >
                     <SelectTrigger id="subtopic">
                       <SelectValue placeholder="Select a subtopic" />
                     </SelectTrigger>
                     <SelectContent>
                       {subtopics.map((subtopic) => (
-                        <SelectItem key={subtopic.id} value={`${subtopic.id}`}>
+                        <SelectItem key={subtopic.id} value={subtopic.id}>
                           {subtopic.name}
                         </SelectItem>
                       ))}
@@ -989,6 +993,22 @@ export default function UpdateQuestionPage() {
             </CardContent>
           </Card>
 
+          {/* Explanation */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Explanation</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Textarea
+                value={formData.explanation}
+                onChange={(e) =>
+                  handleInputChange("explanation", e.target.value)
+                }
+                placeholder="Enter the explanation"
+              />
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle>Preview</CardTitle>
@@ -1068,7 +1088,7 @@ export default function UpdateQuestionPage() {
                         {questionSubtopics?.length > 0 ? (
                           questionSubtopics.map((subtopic) => (
                             <p key={`subtopic_${subtopic}`}>
-                              {getSubtopicName(subtopic as number)}
+                              {getSubtopicName(subtopic)}
                             </p>
                           ))
                         ) : (
