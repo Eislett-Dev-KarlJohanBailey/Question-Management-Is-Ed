@@ -1,6 +1,7 @@
 import { SubTopicDetails } from "@/models/subTopic/subTopicDetails";
 import { SubTopicReqParams } from "@/models/subTopic/subTopicReqParams";
 import { removeNulls } from "@/services/utils";
+import { toast } from "@/hooks/use-toast";
 
 export const handleFetchSubTopics = async (
   token?: string,
@@ -42,8 +43,13 @@ export const handleFetchSubTopics = async (
     const data = await response.json();
     return data;
   } catch (error) {
-    console.error("Error fetching subtopics:", error);
-    throw error;
+    console.log("Error fetching subtopics:", error);
+    toast({
+      title: "Error fetching subtopics",
+      style: { background: "red", color: "white" },
+      duration: 3500,
+    });
+    return { error: "Failed to fetch subtopics" };
   }
 };
 
@@ -71,8 +77,13 @@ export const handleCreateSubTopic = async (
     const data = await response.json();
     return data;
   } catch (error) {
-    console.error("Error creating subtopic:", error);
-    throw error;
+    console.log("Error creating subtopic:", error);
+    toast({
+      title: "Error creating subtopic",
+      style: { background: "red", color: "white" },
+      duration: 3500,
+    });
+    return { error: "Failed to create subtopic" };
   }
 };
 
@@ -104,8 +115,13 @@ export const handleUpdateSubTopic = async (
     const data = await response.json();
     return data;
   } catch (error) {
-    console.error("Error updating subtopic:", error);
-    throw error;
+    console.log("Error updating subtopic:", error);
+    toast({
+      title: "Error updating subtopic",
+      style: { background: "red", color: "white" },
+      duration: 3500,
+    });
+    return { error: "Failed to update subtopic" };
   }
 };
 
@@ -136,7 +152,12 @@ export const handleDeleteSubTopic = async (
     const data = await response.json();
     return data;
   } catch (error) {
-    console.error("Error deleting subtopic:", error);
-    throw error;
+    console.log("Error deleting subtopic:", error);
+    toast({
+      title: "Error deleting subtopic",
+      style: { background: "red", color: "white" },
+      duration: 3500,
+    });
+    return { error: "Failed to delete subtopic" };
   }
 };

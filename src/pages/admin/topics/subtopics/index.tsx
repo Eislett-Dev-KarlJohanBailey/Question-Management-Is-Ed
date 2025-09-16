@@ -119,7 +119,7 @@ export default function SubtopicsPage() {
 
   // Fetch topics once when auth token is available (for dropdown)
   useEffect(() => {
-    if (!authContext?.token || topics.length > 0) return;
+    if (!authContext?.token) return;
 
     const fetchTopics = async () => {
       try {
@@ -133,14 +133,17 @@ export default function SubtopicsPage() {
         if (topicsResults.data && topicsResults.data.length > 0) {
           console.log("✅ TOPICS: Fetched topics:", topicsResults.data.length);
           dispatch(setTopics(topicsResults.data));
+        } else {
+          dispatch(setTopics([]));
         }
       } catch (error) {
-        console.error("❌ TOPICS: Error fetching topics:", error);
+        console.log("❌ TOPICS: Error fetching topics:", error);
+        dispatch(setTopics([]));
       }
     };
 
     fetchTopics();
-  }, [authContext?.token, topics.length, dispatch]);
+  }, [authContext?.token, dispatch]);
 
   // Fetch subtopics based on router params or normal fetch
   useEffect(() => {
@@ -211,7 +214,7 @@ export default function SubtopicsPage() {
         dispatch(setSubTopicAmount(subtopicsResults.amount ?? 0));
         dispatch(setSubTopicsIsLoading(false));
       } catch (error) {
-        console.error("❌ SUBTOPICS: Error fetching subtopics:", error);
+        // console.error("❌ SUBTOPICS: Error fetching subtopics:", error);
         dispatch(setSubTopicsIsLoading(false));
       }
     };
@@ -345,7 +348,7 @@ export default function SubtopicsPage() {
         setFormDrawerOpen(false);
       }
     } catch (error) {
-      console.error("Error submitting subtopic:", error);
+      // console.error("Error submitting subtopic:", error);
       toast({
         title: "Error submitting subtopic",
         style: { background: "red", color: "white" },
@@ -500,7 +503,7 @@ export default function SubtopicsPage() {
       dispatch(setSubTopicAmount(results.amount ?? 0));
       dispatch(setSubTopicsIsLoading(false));
     } catch (error) {
-      console.error("❌ REFRESH: Error refreshing subtopics:", error);
+      console.log("❌ REFRESH: Error refreshing subtopics:", error);
       dispatch(setSubTopicsIsLoading(false));
     }
   }, [
