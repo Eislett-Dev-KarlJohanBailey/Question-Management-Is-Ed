@@ -38,7 +38,7 @@ export function TopicActions({
         <DropdownMenuContent align="end">
           <DropdownMenuLabel>Actions</DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem
+          {/* <DropdownMenuItem
             onClick={(e) => {
               e.stopPropagation();
               onView(topic.id);
@@ -46,7 +46,7 @@ export function TopicActions({
           >
             <Eye className="mr-2 h-4 w-4" />
             View
-          </DropdownMenuItem>
+          </DropdownMenuItem> */}
           <DropdownMenuItem
             onClick={(e) => {
               e.stopPropagation();

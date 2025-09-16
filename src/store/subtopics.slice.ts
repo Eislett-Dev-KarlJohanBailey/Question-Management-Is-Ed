@@ -17,6 +17,7 @@ export interface SubTopicPageSliceState {
     isDeleting: boolean;
   };
   subtopicsIsLoading: boolean;
+  refreshTrigger: number;
 }
 
 const initialState: SubTopicPageSliceState = {
@@ -37,6 +38,7 @@ const initialState: SubTopicPageSliceState = {
     isDeleting: false,
   },
   subtopicsIsLoading: false,
+  refreshTrigger: 0,
 };
 
 const SubTopicPageSlice = createSlice({
@@ -86,6 +88,12 @@ const SubTopicPageSlice = createSlice({
     setSubTopicsIsLoading: (state, action: PayloadAction<boolean>) => {
       state.subtopicsIsLoading = action.payload;
     },
+    triggerSubTopicsRefresh: (state) => {
+      state.refreshTrigger = state.refreshTrigger + 1;
+    },
+    resetSubTopicsState: () => {
+      return initialState;
+    },
   },
 });
 
@@ -97,6 +105,8 @@ export const {
   setSubTopicTableFilters,
   setSubTopicTableDeleteData,
   setSubTopicsIsLoading,
+  triggerSubTopicsRefresh,
+  resetSubTopicsState,
 } = SubTopicPageSlice.actions;
 
 // Selectors
@@ -127,5 +137,9 @@ export const getSubTopicTableDeleteData = (state: {
 export const getSubTopicsIsLoading = (state: {
   SubTopicPageSlice: SubTopicPageSliceState;
 }) => state.SubTopicPageSlice.subtopicsIsLoading;
+
+export const getSubTopicsRefreshTrigger = (state: {
+  SubTopicPageSlice: SubTopicPageSliceState;
+}) => state.SubTopicPageSlice.refreshTrigger;
 
 export default SubTopicPageSlice.reducer;

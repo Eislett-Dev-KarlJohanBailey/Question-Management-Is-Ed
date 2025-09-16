@@ -45,7 +45,7 @@ async function handleGet(
     const params = formatGetReqJson({
       page_number: parseInt(page_number as string),
       page_size: parseInt(page_size as string),
-      topic_id: topic_id as string,
+      topicId: topic_id as string,
     });
 
     const queryString = new URLSearchParams(params).toString();

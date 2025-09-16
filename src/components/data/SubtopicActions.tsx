@@ -36,7 +36,7 @@ export function SubtopicActions({
         <DropdownMenuContent align="end">
           <DropdownMenuLabel>Actions</DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem
+          {/* <DropdownMenuItem
             onClick={(e) => {
               e.stopPropagation();
               onView(subtopic.id);
@@ -44,7 +44,7 @@ export function SubtopicActions({
           >
             <Eye className="mr-2 h-4 w-4" />
             View
-          </DropdownMenuItem>
+          </DropdownMenuItem> */}
           <DropdownMenuItem
             onClick={(e) => {
               e.stopPropagation();

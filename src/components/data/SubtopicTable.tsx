@@ -110,7 +110,6 @@ export function SubtopicTable({
       data={data}
       columns={columns}
       keyExtractor={(item) => item.id || ""}
-      onRowClick={(item) => onView(item.id || "")}
       sortColumn={sortColumn}
       sortDirection={sortDirection}
       onSort={onSort}

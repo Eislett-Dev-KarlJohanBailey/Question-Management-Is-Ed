@@ -22,6 +22,7 @@ import {
   getSubTopicsIsLoading,
   getSubTopicTableDeleteData,
   getSubTopicTableFilters,
+  getSubTopicsRefreshTrigger,
   setFilteredSubTopics,
   setSubTopicAmount,
   setSubTopicReqParams,
@@ -29,6 +30,7 @@ import {
   setSubTopicsIsLoading,
   setSubTopicTableDeleteData,
   setSubTopicTableFilters,
+  triggerSubTopicsRefresh,
 } from "@/store/subtopics.slice";
 import { getTopics, setTopics } from "@/store/topics.slice";
 import { DEFAULT_PAGE_NUMBER } from "@/constants/tablePageSizes";
@@ -45,6 +47,7 @@ export default function SubtopicsPage() {
   const filters = useAppSelector(getSubTopicTableFilters);
   const deleteData = useAppSelector(getSubTopicTableDeleteData);
   const isLoading = useAppSelector(getSubTopicsIsLoading);
+  const refreshTrigger = useAppSelector(getSubTopicsRefreshTrigger);
 
   const subtopics = useAppSelector(getSubTopics);
   const filteredSubtopics = useAppSelector(getFilteredSubTopics);
@@ -214,7 +217,13 @@ export default function SubtopicsPage() {
     };
 
     fetchSubtopics();
-  }, [authContext?.token, router.isReady, router.query, dispatch]);
+  }, [
+    authContext?.token,
+    router.isReady,
+    router.query,
+    dispatch,
+    refreshTrigger,
+  ]);
 
   // Apply filters whenever dependencies change (only for sorting/filtering, not data fetching)
   useEffect(() => {
@@ -315,7 +324,8 @@ export default function SubtopicsPage() {
           duration: 3500,
         });
 
-        // The useEffect will automatically refresh the data
+        // Trigger refresh to fetch updated data
+        dispatch(triggerSubTopicsRefresh());
         setFormDrawerOpen(false);
       } else {
         // Create new subtopic
@@ -330,7 +340,8 @@ export default function SubtopicsPage() {
           duration: 3500,
         });
 
-        // The useEffect will automatically refresh the data
+        // Trigger refresh to fetch updated data
+        dispatch(triggerSubTopicsRefresh());
         setFormDrawerOpen(false);
       }
     } catch (error) {
@@ -381,7 +392,8 @@ export default function SubtopicsPage() {
         duration: 3500,
       });
 
-      // The useEffect will automatically refresh the data
+      // Trigger refresh to fetch updated data
+      dispatch(triggerSubTopicsRefresh());
     }
 
     setTimeout(() => {
