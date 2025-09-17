@@ -1,7 +1,6 @@
-export interface SubTopicDetails {
+export interface TopicDetails {
   id?: string;
   name: string;
   description: string;
-  topicId: string;
   createdAt?: string;
 }

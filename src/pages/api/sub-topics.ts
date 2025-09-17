@@ -1,85 +1,119 @@
-import { HTTP_REQUEST_INTERVAL, HTTP_REQUEST_LIMIT } from "@/constants/rateLimitParams";
-import { QuestionDetails } from "@/models/questions/questionDetails";
-import rateLimit from "@/services/rateLimit";
+import type { NextApiRequest, NextApiResponse } from "next";
 import { formatGetReqJson } from "@/services/utils";
-import { NextApiRequest, NextApiResponse } from "next";
 
-interface Error {
-  error?: string 
-}
+type SubTopicResponse = {
+  data?: Array<{
+    id: string;
+    name: string;
+    description: string;
+    topicId: string;
+    createdAt: string;
+  }>;
+  amount?: number;
+  error?: string;
+};
 
-
-// Get All SubTopics
-async function GET(req: NextApiRequest, res: NextApiResponse) {
-  // const isRateLimit = rateLimit(HTTP_REQUEST_LIMIT, HTTP_REQUEST_INTERVAL)
-  // if( !(await isRateLimit(req , res) )){
-  //   return res.status(429).json({ error: 'Too many requests, please try again later.' } );
-  // }
-  
-  console.log('GET /api/sub-topics (App Router)');
-
-
-  const query = req.query ; // { page_number: '1', page_size: '5' }
-
-  console.log('query', req.query)
-
-  if (!query?.page_number) {
-    return res.status(400).json({ error: 'Page Number is required' });
-  }
-  else if (!query.page_size) {
-    return res.status(400).json({ error: 'Page Size is required' });
-  }
-
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse<SubTopicResponse>
+) {
+  const { method } = req;
 
   try {
-    const route = 'sub-topics';
-    const token = req.headers.authorization;
-    const apiKey = process.env.API_KEY;
-    const nodeServer = process.env.SERVER_BASE_URL;
-
-    const rawResponse = await fetch(
-      `${nodeServer}${route}?${formatGetReqJson(query)}`,
-      {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-          "Authorization" : token
-        },
-      }
-    );
-
-    if (!rawResponse.ok) {
-      throw new Error('Failed to fetch sub topics');
+    switch (method) {
+      case "GET":
+        return handleGet(req, res);
+      case "POST":
+        return handlePost(req, res);
+      default:
+        res.setHeader("Allow", ["GET", "POST"]);
+        return res.status(405).json({ error: `Method ${method} Not Allowed` });
     }
-
-    const response = await rawResponse.json()
-
-    // console.log('GET /api/sub-topics (Response):', response);
-    return res.status(200).json(response);
   } catch (error) {
-    return res.status(500).json({ error: 'Sub topics GET: ' + error.message });
+    console.error("API Error:", error);
+    return res.status(500).json({ error: "Internal server error" });
   }
 }
 
+async function handleGet(
+  req: NextApiRequest,
+  res: NextApiResponse<SubTopicResponse>
+) {
+  try {
+    const { page_number = 1, page_size = 10, topic_id } = req.query;
 
+    const params = formatGetReqJson({
+      page_number: parseInt(page_number as string),
+      page_size: parseInt(page_size as string),
+      topicId: topic_id as string,
+    });
 
-async function handler(req: NextApiRequest, res: NextApiResponse){
-  if  (req.method === 'GET') 
-    return await GET(req , res)
-  // else if  (req.method === 'POST') 
-  //   return await POST(req , res)
-  // else if  (req.method === 'PUT') 
-  //   return await PUT(req , res)
-  else 
-    return res.status(500).json({ error: 'Invalid request'});
+    const queryString = new URLSearchParams(params).toString();
+    const url = `${process.env.SERVER_BASE_URL}sub-topics${
+      queryString ? `?${queryString}` : ""
+    }`;
+    console.log("URL", url);
+
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: req.headers.authorization || "",
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      return res.status(response.status).json({
+        error: errorData.message || `HTTP error! status: ${response.status}`,
+      });
+    }
+
+    const data = await response.json();
+    return res.status(200).json(data);
+  } catch (error) {
+    console.error("GET /api/sub-topics error:", error);
+    return res.status(500).json({ error: "Failed to fetch subtopics" });
+  }
 }
 
-export const config = {
-  api: {
-    responseLimit: false,
-    bodyParser: true, // to parse data
-  },
-}
+async function handlePost(
+  req: NextApiRequest,
+  res: NextApiResponse<SubTopicResponse>
+) {
+  try {
+    const { name, description, topicId } = req.body;
 
-export default handler;
+    if (!name || !description || !topicId) {
+      return res.status(400).json({
+        error: "Missing required fields: name, description, topicId",
+      });
+    }
+    console.log("URL", `${process.env.SERVER_BASE_URL}sub-topics`);
+    const response = await fetch(`${process.env.SERVER_BASE_URL}sub-topics`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: req.headers.authorization || "",
+      },
+      body: JSON.stringify({
+        name,
+        description,
+        topicId,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      return res.status(response.status).json({
+        error: errorData.message || `HTTP error! status: ${response.status}`,
+      });
+    }
+
+    const data = await response.json();
+    return res.status(201).json(data);
+  } catch (error) {
+    console.error("POST /api/sub-topics error:", error);
+    return res.status(500).json({ error: "Failed to create subtopic" });
+  }
+}

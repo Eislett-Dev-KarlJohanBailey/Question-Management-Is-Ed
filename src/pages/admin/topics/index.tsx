@@ -1,130 +1,50 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useContext } from "react";
 import { AdminLayout } from "@/components/layout/AdminLayout";
-import { DataManagementLayout } from "@/components/layout/DataManagementLayout";
-import { DataTable } from "@/components/data/DataTable";
-import { DataFormDrawer } from "@/components/data/DataFormDrawer";
-import { DeleteConfirmationDialog } from "@/components/data/DeleteConfirmationDialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Edit, Eye, MoreHorizontal, Trash, List } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { TopicManagement } from "@/components/data/TopicManagement";
+import { TopicFormData } from "@/components/data/TopicForm";
 import { useRouter } from "next/router";
+import { TopicDetails } from "@/models/topics/topicDetails";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-
-// Topic data type
-interface Topic {
-  id: string;
-  name: string;
-  description: string;
-  courseId: string;
-  createdAt: string;
-}
-
-// Topic form type
-interface TopicFormData {
-  id?: string;
-  name: string;
-  description: string;
-  courseId: string;
-  createdAt?: string;
-}
-
-// Mock data for demonstration
-const MOCK_COURSES = [
-  {
-    id: "1",
-    name: "Calculus I",
-    subjectId: "1",
-  },
-  {
-    id: "2",
-    name: "Mechanics",
-    subjectId: "2",
-  },
-  {
-    id: "3",
-    name: "Shakespeare",
-    subjectId: "3",
-  },
-  {
-    id: "4",
-    name: "World War II",
-    subjectId: "4",
-  },
-  {
-    id: "5",
-    name: "Data Structures",
-    subjectId: "5",
-  },
-];
-
-const MOCK_TOPICS: Topic[] = [
-  {
-    id: "1",
-    name: "Limits and Continuity",
-    description:
-      "Introduction to the concept of limits and continuity in calculus",
-    courseId: "1",
-    createdAt: "2025-01-15",
-  },
-  {
-    id: "2",
-    name: "Newton's Laws of Motion",
-    description: "Fundamental principles governing the motion of objects",
-    courseId: "2",
-    createdAt: "2025-02-10",
-  },
-  {
-    id: "3",
-    name: "Hamlet Analysis",
-    description: "In-depth analysis of Shakespeare's Hamlet",
-    courseId: "3",
-    createdAt: "2025-03-05",
-  },
-  {
-    id: "4",
-    name: "D-Day Invasion",
-    description: "Study of the Allied invasion of Normandy",
-    courseId: "4",
-    createdAt: "2025-01-20",
-  },
-  {
-    id: "5",
-    name: "Binary Trees",
-    description: "Implementation and applications of binary trees",
-    courseId: "5",
-    createdAt: "2025-02-25",
-  },
-];
+  handleFetchTopics,
+  handleCreateTopic,
+  handleUpdateTopic,
+  handleDeleteTopic,
+} from "@/services/topics/topicsRequest";
+import { useAuth } from "@/contexts/AuthContext";
+import { useAppDispatch, useAppSelector } from "@/store/hook";
+import {
+  getFilteredTopics,
+  getTopicAmt,
+  getTopicReqParams,
+  getTopics,
+  getTopicsIsLoading,
+  getTopicTableDeleteData,
+  getTopicTableFilters,
+  setFilteredTopics,
+  setTopicAmount,
+  setTopicReqParams,
+  setTopics,
+  setTopicsIsLoading,
+  setTopicTableDeleteData,
+  setTopicTableFilters,
+} from "@/store/topics.slice";
+import { DEFAULT_PAGE_NUMBER } from "@/constants/tablePageSizes";
+import { toast } from "@/hooks/use-toast";
+import { removeNulls } from "@/services/utils";
 
 export default function TopicsPage() {
   const router = useRouter();
-  const [topics, setTopics] = useState<Topic[]>(MOCK_TOPICS);
-  const [filteredTopics, setFilteredTopics] = useState<Topic[]>(MOCK_TOPICS);
-  const [courses, setCourses] = useState(MOCK_COURSES);
-  const [isLoading, setIsLoading] = useState(false);
+  const dispatch = useAppDispatch();
+  const authContext = useContext(useAuth());
 
-  // URL-synced state
-  const [sortColumn, setSortColumn] = useState<string>("name");
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [courseFilter, setCourseFilter] = useState<string>("");
+  const topicReqParams = useAppSelector(getTopicReqParams);
+  const totalTopicAmt = useAppSelector(getTopicAmt);
+  const filters = useAppSelector(getTopicTableFilters);
+  const deleteData = useAppSelector(getTopicTableDeleteData);
+  const isLoading = useAppSelector(getTopicsIsLoading);
+
+  const topics = useAppSelector(getTopics);
+  const filteredTopics = useAppSelector(getFilteredTopics);
 
   // Form drawer state
   const [formDrawerOpen, setFormDrawerOpen] = useState(false);
@@ -132,92 +52,117 @@ export default function TopicsPage() {
   const [currentTopic, setCurrentTopic] = useState<TopicFormData>({
     name: "",
     description: "",
-    courseId: "",
   });
   const [isEditMode, setIsEditMode] = useState(false);
 
-  // Delete dialog state
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [topicToDelete, setTopicToDelete] = useState<string | null>(null);
-
   // Apply all filters, sorting, and pagination
   const applyFilters = useCallback(() => {
-    setIsLoading(true);
+    console.log("Applying filters", filters);
+    dispatch(setTopicsIsLoading(true));
 
     let result = [...topics];
 
-    if (searchQuery) {
-      const lowerSearch = searchQuery.toLowerCase();
-      result = result.filter(
-        (topic) =>
-          topic.name.toLowerCase().includes(lowerSearch) ||
-          topic.description.toLowerCase().includes(lowerSearch)
-      );
-    }
-
-    if (courseFilter) {
-      result = result.filter((topic) => topic.courseId === courseFilter);
-    }
-
     result.sort((a, b) => {
       let comparison = 0;
-      const valA = a[sortColumn as keyof Topic];
-      const valB = b[sortColumn as keyof Topic];
+      const valA = a[filters.sortColumn as keyof TopicDetails];
+      const valB = b[filters.sortColumn as keyof TopicDetails];
 
-      if (sortColumn === "course") {
-        const courseA = courses.find((c) => c.id === a.courseId)?.name || "";
-        const courseB = courses.find((c) => c.id === b.courseId)?.name || "";
-        comparison = courseA.localeCompare(courseB);
-      } else if (typeof valA === "string" && typeof valB === "string") {
+      if (typeof valA === "string" && typeof valB === "string") {
         comparison = valA.localeCompare(valB);
       } else if (typeof valA === "number" && typeof valB === "number") {
         comparison = valA - valB;
-      } else if (sortColumn === "createdAt") {
+      } else if (filters.sortColumn === "createdAt") {
         comparison =
-          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+          new Date(a.createdAt || "").getTime() -
+          new Date(b.createdAt || "").getTime();
       }
-      return sortDirection === "asc" ? comparison : -comparison;
+      return filters.sortDirection === "asc" ? comparison : -comparison;
     });
 
-    setFilteredTopics(result);
-    setIsLoading(false);
-  }, [topics, searchQuery, courseFilter, sortColumn, sortDirection, courses]);
+    console.log("Filtered Data", result);
+    dispatch(setFilteredTopics(result));
+    setTimeout(() => {
+      dispatch(setTopicsIsLoading(false));
+    }, 1000);
+  }, [dispatch, filters, topics]);
 
   // Initialize state from URL on first load
   useEffect(() => {
     if (!router.isReady) return;
 
-    const sortColumnFromUrl = router.query.sortColumn as string;
-    const sortDirectionFromUrl = router.query.sortDirection as "asc" | "desc";
-    if (sortColumnFromUrl) setSortColumn(sortColumnFromUrl);
-    if (sortDirectionFromUrl && ["asc", "desc"].includes(sortDirectionFromUrl))
-      setSortDirection(sortDirectionFromUrl);
-
     const pageFromUrl = router.query.page
       ? parseInt(router.query.page as string, 10)
-      : 1;
-    if (!isNaN(pageFromUrl)) setCurrentPage(pageFromUrl);
+      : DEFAULT_PAGE_NUMBER;
+    if (!isNaN(pageFromUrl))
+      dispatch(setTopicReqParams({ page_number: pageFromUrl }));
 
     const searchFromUrl = router.query.search as string;
-    if (searchFromUrl) setSearchQuery(searchFromUrl);
 
-    const courseFilterFromUrl = router.query.course as string;
-    if (courseFilterFromUrl) setCourseFilter(courseFilterFromUrl);
+    const reqParams = {
+      title:
+        searchFromUrl && searchFromUrl?.length > 0 ? searchFromUrl : undefined,
+      page_number: !isNaN(pageFromUrl) ? pageFromUrl : undefined,
+    };
+    removeNulls(reqParams);
+    dispatch(setTopicReqParams(reqParams));
 
-    applyFilters();
-  }, [router.isReady, router.query, applyFilters]);
+    const sortColumnFromUrl = router.query.sortColumn as string;
+    const sortDirectionFromUrl = router.query.sortDirection as "asc" | "desc";
 
-  // Apply filters whenever dependencies change
+    const filterParams = {
+      sortColumn: sortColumnFromUrl,
+      sortDirection:
+        sortDirectionFromUrl && ["asc", "desc"].includes(sortDirectionFromUrl)
+          ? sortDirectionFromUrl
+          : undefined,
+    };
+    dispatch(setTopicTableFilters(filterParams));
+  }, [router.isReady, router.query, dispatch]);
+
+  //GET LIST OF TOPICS
   useEffect(() => {
-    applyFilters();
+    console.log("Fetching topics");
+    async function getTopics() {
+      dispatch(setTopicsIsLoading(true));
+      try {
+        const results = await handleFetchTopics(
+          authContext?.token,
+          topicReqParams?.page_number,
+          topicReqParams?.page_size
+        );
+
+        if ((results as { error: string })?.error) {
+          toast({
+            title: (results as { error: string })?.error,
+            style: { background: "red", color: "white" },
+            duration: 3500,
+          });
+
+          dispatch(setTopics([]));
+        } else {
+          dispatch(setTopics(results.data ?? []));
+        }
+
+        dispatch(setTopicAmount(results.amount ?? 0));
+        dispatch(setTopicsIsLoading(false));
+      } catch (error) {
+        toast({
+          title: "Error fetching topics",
+          style: { background: "red", color: "white" },
+          duration: 3500,
+        });
+      } finally {
+        dispatch(setTopicsIsLoading(false));
+      }
+    }
+
+    getTopics();
   }, [
-    topics,
-    searchQuery,
-    courseFilter,
-    sortColumn,
-    sortDirection,
-    applyFilters,
+    topicReqParams?.page_number,
+    topicReqParams?.page_size,
+    topicReqParams?.title,
+    dispatch,
+    authContext?.token,
   ]);
 
   const handleFormChange = (field: keyof TopicFormData, value: string) => {
@@ -228,7 +173,6 @@ export default function TopicsPage() {
     setCurrentTopic({
       name: "",
       description: "",
-      courseId: (router.query.course as string) || "",
     });
     setIsEditMode(false);
     setFormDrawerOpen(true);
@@ -246,58 +190,157 @@ export default function TopicsPage() {
     }
   };
 
-  const handleFormSubmit = () => {
-    setIsSubmitting(true);
-    if (!currentTopic.name || !currentTopic.courseId) {
+  const handleFormSubmit = async () => {
+    if (!authContext?.token) {
       setIsSubmitting(false);
       return;
     }
 
-    setTimeout(() => {
-      if (isEditMode && currentTopic.id) {
-        const originalTopic = topics.find((t) => t.id === currentTopic.id);
-        if (originalTopic) {
-          const updatedTopic: Topic = {
-            id: currentTopic.id,
-            name: currentTopic.name,
-            description: currentTopic.description,
-            courseId: currentTopic.courseId,
-            createdAt: originalTopic.createdAt,
-          };
-          setTopics((prev) =>
-            prev.map((t) => (t.id === updatedTopic.id ? updatedTopic : t))
-          );
-        }
-      } else {
-        const newTopic: Topic = {
-          name: currentTopic.name,
-          description: currentTopic.description,
-          courseId: currentTopic.courseId,
-          id: `${Date.now()}`, // Using timestamp for more unique ID
-          createdAt: new Date().toISOString().split("T")[0],
-        };
-        setTopics((prev) => [...prev, newTopic]);
-      }
+    // Frontend validation
+    if (!currentTopic.name.trim()) {
+      toast({
+        title: "Topic name is required",
+        style: { background: "red", color: "white" },
+        duration: 3500,
+      });
       setIsSubmitting(false);
-      setFormDrawerOpen(false);
-    }, 1000);
+      return;
+    }
+
+    if (!currentTopic.description.trim()) {
+      toast({
+        title: "Topic description is required",
+        style: { background: "red", color: "white" },
+        duration: 3500,
+      });
+      setIsSubmitting(false);
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      if (isEditMode && currentTopic.id) {
+        // Update existing topic
+        const response = await handleUpdateTopic(
+          authContext.token,
+          currentTopic as TopicDetails
+        );
+        // Show success message
+        toast({
+          title: "Topic updated successfully!",
+          style: { background: "green", color: "white" },
+          duration: 3500,
+        });
+
+        // Refresh the topics list
+        const results = await handleFetchTopics(
+          authContext.token,
+          topicReqParams?.page_number,
+          topicReqParams?.page_size
+        );
+        if (results.data) {
+          dispatch(setTopics(results.data));
+        }
+        setFormDrawerOpen(false);
+      } else {
+        // Create new topic
+        const response = await handleCreateTopic(
+          authContext.token,
+          currentTopic as TopicDetails
+        );
+        // Show success message
+        toast({
+          title: "Topic created successfully!",
+          style: { background: "green", color: "white" },
+          duration: 3500,
+        });
+
+        // Refresh the topics list
+        const results = await handleFetchTopics(
+          authContext.token,
+          topicReqParams?.page_number,
+          topicReqParams?.page_size
+        );
+        if (results.data) {
+          dispatch(setTopics(results.data));
+        }
+        setFormDrawerOpen(false);
+      }
+    } catch (error) {
+      console.error("Error submitting topic:", error);
+      toast({
+        title: "Error submitting topic",
+        style: { background: "red", color: "white" },
+        duration: 3500,
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleDeleteClick = (id: string) => {
-    setTopicToDelete(id);
-    setDeleteDialogOpen(true);
-  };
+  const handleDeleteClick = useCallback(
+    (id: string) => {
+      dispatch(
+        setTopicTableDeleteData({
+          topicId: id,
+          showDeleteDialog: true,
+          isDeleting: false,
+        })
+      );
+    },
+    [dispatch]
+  );
 
-  const handleDeleteConfirm = () => {
-    if (!topicToDelete) return;
-    setIsDeleting(true);
+  const handleDeleteConfirm = useCallback(async () => {
+    if (!deleteData.topicId) return;
+    dispatch(
+      setTopicTableDeleteData({
+        topicId: deleteData.topicId,
+        showDeleteDialog: true,
+        isDeleting: true,
+      })
+    );
+
+    const result = await handleDeleteTopic(
+      authContext?.token,
+      deleteData.topicId
+    );
+
+    if (!result.error) {
+      // Show success message
+      toast({
+        title: "Topic deleted successfully!",
+        style: { background: "green", color: "white" },
+        duration: 3500,
+      });
+
+      // Refresh the topics list
+      const results = await handleFetchTopics(
+        authContext?.token,
+        topicReqParams?.page_number,
+        topicReqParams?.page_size
+      );
+      if (results.data) {
+        dispatch(setTopics(results.data));
+      }
+    }
+
     setTimeout(() => {
-      setTopics(topics.filter((topic) => topic.id !== topicToDelete));
-      setIsDeleting(false);
-      setDeleteDialogOpen(false);
-      setTopicToDelete(null);
+      dispatch(
+        setTopicTableDeleteData({
+          topicId: undefined,
+          showDeleteDialog: false,
+          isDeleting: false,
+        })
+      );
     }, 1000);
-  };
+  }, [
+    authContext?.token,
+    deleteData.topicId,
+    dispatch,
+    topicReqParams?.page_number,
+    topicReqParams?.page_size,
+  ]);
 
   const handleViewTopic = (id: string) => {
     router.push(`/admin/topics/${id}`);
@@ -307,361 +350,62 @@ export default function TopicsPage() {
     router.push(`/admin/topics/subtopics?topic=${id}`);
   };
 
-  const handleSearch = (value: string) => {
-    setSearchQuery(value);
-    setCurrentPage(1);
-  };
+  const handleSearch = useCallback(
+    (value: string) => {
+      dispatch(setTopicReqParams({ title: value, page_number: 1 }));
+    },
+    [dispatch]
+  );
 
-  const handleCourseFilterChange = (value: string) => {
-    setCourseFilter(value);
-    setCurrentPage(1);
-    const query = { ...router.query, course: value || undefined, page: "1" };
-    if (!value) delete query.course;
-    router.push({ pathname: router.pathname, query }, undefined, {
-      shallow: true,
-    });
-  };
-
-  const handleSort = (column: string, direction: "asc" | "desc") => {
-    setSortColumn(column);
-    setSortDirection(direction);
-    router.push(
-      {
-        pathname: router.pathname,
-        query: {
-          ...router.query,
+  const handleSort = useCallback(
+    (column: string, direction: "asc" | "desc") => {
+      dispatch(
+        setTopicTableFilters({
           sortColumn: column,
           sortDirection: direction,
-        },
-      },
-      undefined,
-      { shallow: true }
-    );
-  };
+        })
+      );
 
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-    router.push(
-      {
-        pathname: router.pathname,
-        query: { ...router.query, page: page.toString() },
-      },
-      undefined,
-      { shallow: true }
-    );
-  };
-
-  const handleRefresh = () => {
-    setIsLoading(true);
-    setTimeout(() => {
-      applyFilters();
-      setIsLoading(false);
-    }, 500);
-  };
-
-  const getPaginatedData = () => {
-    const itemsPerPage = 10;
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    return filteredTopics.slice(startIndex, startIndex + itemsPerPage);
-  };
-
-  const getCourseName = (courseId: string) =>
-    courses.find((c) => c.id === courseId)?.name || "Unknown";
-
-  const filterOptions = [
-    {
-      id: "course",
-      label: "Course",
-      type: "select" as const,
-      value: courseFilter,
-      onChange: handleCourseFilterChange,
-      placeholder: "Select course",
-      options: [
-        { label: "All Courses", value: "" },
-        ...courses.map((course) => ({ label: course.name, value: course.id })),
-      ],
+      setTimeout(applyFilters, 800);
     },
-  ];
+    [dispatch, applyFilters]
+  );
 
-  const columns = [
-    {
-      id: "id",
-      header: "ID",
-      cell: (topic: Topic) => (
-        <span className="text-muted-foreground text-sm">{topic.id}</span>
-      ),
-      sortable: true,
+  const handlePageChange = useCallback(
+    (page: number) => {
+      dispatch(setTopicReqParams({ page_number: page }));
     },
-    {
-      id: "name",
-      header: "Topic Name",
-      cell: (topic: Topic) => <span className="font-medium">{topic.name}</span>,
-      sortable: true,
-    },
-    {
-      id: "course",
-      header: "Course",
-      cell: (topic: Topic) => <span>{getCourseName(topic.courseId)}</span>,
-      sortable: true,
-    },
-    {
-      id: "description",
-      header: "Description",
-      cell: (topic: Topic) => (
-        <span className="truncate block max-w-[300px]">
-          {topic.description}
-        </span>
-      ),
-      sortable: false,
-    },
-    {
-      id: "createdAt",
-      header: "Created At",
-      cell: (topic: Topic) => new Date(topic.createdAt).toLocaleDateString(),
-      sortable: true,
-    },
-    {
-      id: "actions",
-      header: "",
-      cell: (topic: Topic) => (
-        <div className="flex justify-end">
-          <DropdownMenu key={`${topic.id}-${formDrawerOpen}`}>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Actions</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleViewTopic(topic.id);
-                }}
-              >
-                <Eye className="mr-2 h-4 w-4" />
-                View
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleEdit(topic.id);
-                }}
-              >
-                <Edit className="mr-2 h-4 w-4" />
-                Edit
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleManageSubtopics(topic.id);
-                }}
-              >
-                <List className="mr-2 h-4 w-4" />
-                Manage Subtopics
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleDeleteClick(topic.id);
-                }}
-                className="text-destructive focus:text-destructive"
-              >
-                <Trash className="mr-2 h-4 w-4" />
-                Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      ),
-    },
-  ];
+    [dispatch]
+  );
 
-  const sortOptions = [
-    { label: "Name (A-Z)", value: "name_asc" },
-    { label: "Name (Z-A)", value: "name_desc" },
-    { label: "Course (A-Z)", value: "course_asc" },
-    { label: "Course (Z-A)", value: "course_desc" },
-    { label: "ID (Ascending)", value: "id_asc" },
-    { label: "ID (Descending)", value: "id_desc" },
-    { label: "Newest First", value: "createdAt_desc" },
-    { label: "Oldest First", value: "createdAt_asc" },
-  ];
-
-  const handleSortChange = (value: string) => {
-    const [column, direction] = value.split("_");
-    handleSort(column, direction as "asc" | "desc");
-  };
-
-  const getCurrentSortValue = () => `${sortColumn}_${sortDirection}`;
+  const handleRefresh = useCallback(() => {
+    applyFilters();
+  }, [applyFilters]);
 
   return (
     <AdminLayout>
-      <DataManagementLayout
-        title="Topics"
-        description="Manage all topics in the system"
-        onAddNew={handleAddNew}
-        addNewLabel="Add Topic"
-        searchPlaceholder="Search topics..."
-        onSearch={handleSearch}
-        sortOptions={sortOptions}
-        onSortChange={handleSortChange}
-        filterControls={
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {filterOptions.map((filter) => (
-              <div key={filter.id} className="space-y-2">
-                <Label htmlFor={filter.id} className="text-sm font-medium">
-                  {filter.label}
-                </Label>
-                <Select value={filter.value} onValueChange={filter.onChange}>
-                  <SelectTrigger id={filter.id}>
-                    <SelectValue placeholder={filter.placeholder} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {filter.options.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            ))}
-          </div>
-        }
-        isLoading={isLoading}
-        onRefresh={handleRefresh}
-        className="px-2 sm:px-4"
-        defaultSort={getCurrentSortValue()}
-        defaultShowFilters={!!courseFilter}
-        secondaryActions={
-          <Button
-            variant="outline"
-            onClick={() => router.push("/admin/topics/subtopics")}
-            className="ml-2"
-          >
-            <List className="mr-2 h-4 w-4" />
-            All Subtopics
-          </Button>
-        }
-      >
-        <DataTable
-          data={getPaginatedData()}
-          columns={columns}
-          keyExtractor={(item) => item.id}
-          onRowClick={(item) => handleViewTopic(item.id)}
-          sortColumn={sortColumn}
-          sortDirection={sortDirection}
-          onSort={handleSort}
-          pagination={{
-            currentPage,
-            totalPages: Math.max(1, Math.ceil(filteredTopics.length / 10)),
-            onPageChange: handlePageChange,
-          }}
-          emptyState={
-            <div className="flex flex-col items-center justify-center py-8">
-              <p className="text-muted-foreground mb-4">No topics found</p>
-              <Button onClick={handleAddNew}>Add your first topic</Button>
-            </div>
-          }
-        />
-      </DataManagementLayout>
-
-      <DataFormDrawer
-        title={isEditMode ? "Edit Topic" : "Add New Topic"}
-        description={isEditMode ? "Update topic details" : "Create a new topic"}
-        open={formDrawerOpen}
-        onOpenChange={(open) => {
-          setFormDrawerOpen(open);
-          // Restore focus after modal closes
-          if (!open) {
-            setTimeout(() => {
-              const activeElement = document.activeElement as HTMLElement;
-              if (activeElement && activeElement.blur) {
-                activeElement.blur();
-              }
-            }, 150);
-          }
-        }}
-        onSubmit={handleFormSubmit}
+      <TopicManagement
+        authToken={authContext?.token}
+        formDrawerOpen={formDrawerOpen}
+        setFormDrawerOpen={setFormDrawerOpen}
         isSubmitting={isSubmitting}
-        submitLabel={isEditMode ? "Save Changes" : "Create Topic"}
-        size="md"
-      >
-        <div className="space-y-6">
-          {isEditMode && currentTopic.id && (
-            <div className="space-y-2">
-              <Label htmlFor="id">ID</Label>
-              <Input
-                id="id"
-                value={currentTopic.id}
-                readOnly
-                disabled
-                className="bg-muted"
-              />
-            </div>
-          )}
-          <div className="space-y-2">
-            <Label htmlFor="name">Topic Name</Label>
-            <Input
-              id="name"
-              value={currentTopic.name}
-              onChange={(e) => handleFormChange("name", e.target.value)}
-              placeholder="Enter topic name"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="course">Course</Label>
-            <Select
-              value={currentTopic.courseId}
-              onValueChange={(value) => handleFormChange("courseId", value)}
-            >
-              <SelectTrigger id="course">
-                <SelectValue placeholder="Select course" />
-              </SelectTrigger>
-              <SelectContent>
-                {courses.map((course) => (
-                  <SelectItem key={course.id} value={course.id}>
-                    {course.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
-            <Textarea
-              id="description"
-              value={currentTopic.description}
-              onChange={(e) => handleFormChange("description", e.target.value)}
-              placeholder="Enter topic description"
-              rows={4}
-            />
-          </div>
-          {isEditMode && currentTopic.createdAt && (
-            <div className="space-y-2">
-              <Label htmlFor="createdAt">Created At</Label>
-              <Input
-                id="createdAt"
-                value={new Date(currentTopic.createdAt).toLocaleDateString()}
-                readOnly
-                disabled
-                className="bg-muted"
-              />
-            </div>
-          )}
-        </div>
-      </DataFormDrawer>
-
-      <DeleteConfirmationDialog
-        open={deleteDialogOpen}
-        onOpenChange={setDeleteDialogOpen}
-        onConfirm={handleDeleteConfirm}
-        isDeleting={isDeleting}
-        title="Delete Topic"
-        description="Are you sure you want to delete this topic? This action cannot be undone and will remove all associated content."
+        setIsSubmitting={setIsSubmitting}
+        currentTopic={currentTopic}
+        setCurrentTopic={setCurrentTopic}
+        isEditMode={isEditMode}
+        setIsEditMode={setIsEditMode}
+        onFormChange={handleFormChange}
+        onAddNew={handleAddNew}
+        onEdit={handleEdit}
+        onFormSubmit={handleFormSubmit}
+        onDeleteClick={handleDeleteClick}
+        onDeleteConfirm={handleDeleteConfirm}
+        onViewTopic={handleViewTopic}
+        onManageSubtopics={handleManageSubtopics}
+        onSearch={handleSearch}
+        onSort={handleSort}
+        onPageChange={handlePageChange}
+        onRefresh={handleRefresh}
       />
     </AdminLayout>
   );
