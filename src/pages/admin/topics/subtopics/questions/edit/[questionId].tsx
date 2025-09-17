@@ -169,7 +169,7 @@ export default function UpdateQuestionPage() {
       const results = await handleFetchSubTopics(
         authContext?.token,
         1,
-        50,
+        100,
         topic_id
       );
 
