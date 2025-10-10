@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { ChevronDown, ChevronUp, ChevronsUpDown } from "lucide-react"
-import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination"
+import { EnhancedPagination } from "@/components/ui/enhanced-pagination"
 import { cn } from "@/lib/utils"
 import { useRouter } from "next/router"
 
@@ -33,7 +33,14 @@ export interface DataTableProps<T> {
   pagination?: {
     currentPage: number
     totalPages: number
+    totalItems: number
+    itemsPerPage: number
     onPageChange: (page: number) => void
+    onPageSizeChange?: (pageSize: number) => void
+    pageSizeOptions?: number[]
+    showPageSizeSelector?: boolean
+    showPageInput?: boolean
+    showFirstLastButtons?: boolean
   }
   isLoading?: boolean
   emptyState?: ReactNode
@@ -178,69 +185,18 @@ export function DataTable<T>({
       </div>
       
       {pagination && pagination.totalPages > 1 && (
-        <Pagination className="justify-center">
-          <PaginationContent>
-            <PaginationItem>
-              <PaginationPrevious 
-                href="#" 
-                onClick={(e) => {
-                  e.preventDefault()
-                  if (pagination.currentPage > 1) {
-                    handlePageChange(pagination.currentPage - 1)
-                  }
-                }}
-                className={pagination.currentPage <= 1 ? "pointer-events-none opacity-50" : ""}
-              />
-            </PaginationItem>
-            
-            {Array.from({ length: pagination.totalPages }).map((_, index) => {
-              const page = index + 1
-              // Show current page, first, last, and pages around current
-              const shouldShow = 
-                page === 1 || 
-                page === pagination.totalPages || 
-                Math.abs(page - pagination.currentPage) <= 1
-              
-              if (!shouldShow && page === 2 || !shouldShow && page === pagination.totalPages - 1) {
-                return (
-                  <PaginationItem key={page} className="flex items-center justify-center">
-                    <span className="px-1">...</span>
-                  </PaginationItem>
-                )
-              }
-              
-              if (!shouldShow) return null
-              
-              return (
-                <PaginationItem key={page}>
-                  <PaginationLink
-                    href="#"
-                    onClick={(e) => {
-                      e.preventDefault()
-                      handlePageChange(page)
-                    }}
-                    isActive={page === pagination.currentPage}
-                  >
-                    {page}
-                  </PaginationLink>
-                </PaginationItem>
-              )
-            })}
-            
-            <PaginationItem>
-              <PaginationNext 
-                href="#" 
-                onClick={(e) => {
-                  e.preventDefault()
-                  if (pagination.currentPage < pagination.totalPages) {
-                    handlePageChange(pagination.currentPage + 1)
-                  }
-                }}
-                className={pagination.currentPage >= pagination.totalPages ? "pointer-events-none opacity-50" : ""}
-              />
-            </PaginationItem>
-          </PaginationContent>
-        </Pagination>
+        <EnhancedPagination
+          currentPage={pagination.currentPage}
+          totalPages={pagination.totalPages}
+          totalItems={pagination.totalItems}
+          itemsPerPage={pagination.itemsPerPage}
+          onPageChange={handlePageChange}
+          onPageSizeChange={pagination.onPageSizeChange}
+          pageSizeOptions={pagination.pageSizeOptions}
+          showPageSizeSelector={pagination.showPageSizeSelector}
+          showPageInput={pagination.showPageInput}
+          showFirstLastButtons={pagination.showFirstLastButtons}
+        />
       )}
     </div>
   )

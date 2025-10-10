@@ -721,7 +721,17 @@ export default function QuestionsPage() {
               1,
               Math.ceil(totalQuestionAmt / questionReqParams.page_size)
             ),
+            totalItems: totalQuestionAmt,
+            itemsPerPage: questionReqParams.page_size,
             onPageChange: handlePageChange,
+            onPageSizeChange: (pageSize: number) => {
+              dispatch(setQuestionReqParams({ page_size: pageSize, page_number: 1 }));
+              setTimeout(applyFilters, 800);
+            },
+            pageSizeOptions: [5, 10, 20, 50, 100],
+            showPageSizeSelector: true,
+            showPageInput: true,
+            showFirstLastButtons: true,
           }}
           emptyState={
             <div className="flex flex-col items-center justify-center py-8">
