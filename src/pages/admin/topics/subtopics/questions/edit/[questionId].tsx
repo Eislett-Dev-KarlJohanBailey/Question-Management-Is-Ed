@@ -70,6 +70,17 @@ export default function UpdateQuestionPage() {
   );
   const [hasLoadedInitialData, setHasLoadedInitialData] = useState(false);
 
+  // Monitor form data changes for debugging
+  useEffect(() => {
+    console.log('Form data changed:', {
+      title: formData.title,
+      hasTitle: !!formData.title,
+      titleLength: formData.title?.length,
+      isDuplicate: router.query.duplicate === 'true',
+      hasLoadedInitialData
+    });
+  }, [formData.title, router.query.duplicate, hasLoadedInitialData]);
+
   // Initialize form data from URL query
   useEffect(() => {
     if (router.isReady && router.query.questionId) {
@@ -113,17 +124,21 @@ export default function UpdateQuestionPage() {
         const isDuplicate = router.query.duplicate === 'true';
         const questionData = results as QuestionDetails;
         
+        console.log('Duplicate mode:', isDuplicate);
+        console.log('Question data:', questionData);
+        console.log('Original title:', questionData?.title);
+        
         const data = {
           id: isDuplicate ? "" : (formData.id || questionId),
           title: isDuplicate 
-            ? `Copy of ${questionData?.title}` 
-            : questionData?.title,
-          content: questionData?.content,
-          description: questionData?.description,
-          tags: questionData?.tags,
-          totalPotentialMarks: questionData?.totalPotentialMarks,
-          difficultyLevel: questionData?.difficultyLevel,
-          type: questionData?.type,
+            ? `Copy of ${questionData?.title || 'Question'}` 
+            : (questionData?.title || ''),
+          content: questionData?.content || '',
+          description: questionData?.description || '',
+          tags: questionData?.tags || [],
+          totalPotentialMarks: questionData?.totalPotentialMarks || 1,
+          difficultyLevel: questionData?.difficultyLevel || 0.1,
+          type: questionData?.type || QuestionType.MULTIPLE_CHOICE,
           explanation: questionData?.explanation || "",
         };
 
@@ -150,10 +165,37 @@ export default function UpdateQuestionPage() {
           }));
         }
         data["multipleChoiceOptions"] = newOptions;
-        links = questionData?.subTopics?.map((el) => String(el.id)) || [];
+        
+        // For duplicate mode, copy the original question's subtopics
+        if (isDuplicate) {
+          links = questionData?.subTopics?.map((el) => String(el.id)) || [];
+          console.log('Duplicate mode: Copying subtopic links:', links);
+        } else {
+          links = questionData?.subTopics?.map((el) => String(el.id)) || [];
+          console.log('Edit mode: Setting existing subtopic links:', links);
+        }
 
         // Set all form data at once to avoid state conflicts
-        dispatch(setAllQuestionFormData(data as any));
+        console.log('Setting form data:', data);
+        console.log('Final title:', data.title);
+        
+        // Set form data field by field to ensure proper Redux state update
+        dispatch(setQuestionFormData({ field: 'title', value: data.title }));
+        dispatch(setQuestionFormData({ field: 'content', value: data.content }));
+        dispatch(setQuestionFormData({ field: 'description', value: data.description }));
+        dispatch(setQuestionFormData({ field: 'tags', value: data.tags }));
+        dispatch(setQuestionFormData({ field: 'totalPotentialMarks', value: data.totalPotentialMarks }));
+        dispatch(setQuestionFormData({ field: 'difficultyLevel', value: data.difficultyLevel }));
+        dispatch(setQuestionFormData({ field: 'type', value: data.type }));
+        dispatch(setQuestionFormData({ field: 'explanation', value: data.explanation }));
+        dispatch(setQuestionFormData({ field: 'multipleChoiceOptions', value: (data as any).multipleChoiceOptions || [] }));
+        
+        // For duplicate mode, set the subtopics in Redux state
+        if (isDuplicate) {
+          console.log('Duplicate mode: Setting subtopics in Redux state:', links);
+          dispatch(setAllQuestionFormSubtopics(links));
+        }
+        
         setHasLoadedInitialData(true);
       }
 
@@ -388,10 +430,22 @@ export default function UpdateQuestionPage() {
       if (questionSubtopics.length === 0) return true;
       let linkSuccess = true;
 
+      console.log('handleLinkSubtopics called with:', {
+        questionId,
+        questionSubtopics,
+        existingSubtopicLinks,
+        isDuplicate: router.query.duplicate === 'true'
+      });
+
       try {
-        for (let subtopicId of questionSubtopics.filter(
-          (subtopic) => !existingSubtopicLinks.includes(subtopic)
-        )) {
+        // For duplicates, link all subtopics. For edits, only link new ones.
+        const subtopicsToLink = router.query.duplicate === 'true' 
+          ? questionSubtopics 
+          : questionSubtopics.filter((subtopic) => !existingSubtopicLinks.includes(subtopic));
+        
+        console.log('Subtopics to link:', subtopicsToLink);
+
+        for (let subtopicId of subtopicsToLink) {
           const rawResponse = await fetch(
             `/api/sub-topics/${subtopicId}/question/${questionId}`,
             {
@@ -417,7 +471,7 @@ export default function UpdateQuestionPage() {
 
       return linkSuccess;
     },
-    [existingSubtopicLinks, questionSubtopics]
+    [existingSubtopicLinks, questionSubtopics, router.query.duplicate]
   );
 
   // Handle linking question to sub topic
@@ -465,16 +519,45 @@ export default function UpdateQuestionPage() {
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
-      // console.log('FOrm Data', formData);
-      // Validation
+      
+      // Debug logging
+      console.log('Form Data on Submit:', formData);
+      console.log('Is Duplicate:', router.query.duplicate === 'true');
+      
+      // Check if form data is loaded
       const isDuplicate = router.query.duplicate === 'true';
+      if (!hasLoadedInitialData && !isDuplicate) {
+        displayErrorMessage("Form not ready", "Please wait for the form to load");
+        return;
+      }
+      
+      // For duplicate mode, ensure we have the title
+      if (isDuplicate && (!formData.title || formData.title.trim() === '')) {
+        displayErrorMessage("Form not ready", "Please wait for the form to load completely");
+        return;
+      }
+      
+      // Check if form is still loading
+      if (isLoading) {
+        displayErrorMessage("Form loading", "Please wait for the form to finish loading");
+        return;
+      }
+      
+      // Validation
       if (!isDuplicate && !formData.id) {
-        // alert("Please enter a title")
         displayErrorMessage("Missing question id", "No question id found");
         return;
       }
-      if (!formData.title.trim()) {
-        // alert("Please enter a title")
+      
+      // Check if title exists and is not empty
+      if (!formData.title || !formData.title.trim()) {
+        console.log('Title validation failed:', { 
+          title: formData.title, 
+          formData,
+          isDuplicate,
+          hasLoadedInitialData,
+          isLoading
+        });
         displayErrorMessage("Missing required fields", "Please enter a title");
         return;
       }
@@ -564,6 +647,9 @@ export default function UpdateQuestionPage() {
 
         params = removeNulls(params) as any;
 
+        console.log('API Request params:', params);
+        console.log('API Request method:', isDuplicate ? "POST" : "PUT");
+
         const rawResponse = await fetch("/api/questions", {
           method: isDuplicate ? "POST" : "PUT",
           headers: {
@@ -574,15 +660,28 @@ export default function UpdateQuestionPage() {
           body: JSON.stringify(params),
         });
         const data: QuestionDetails = await rawResponse.json();
+        console.log('API Response:', data);
+
+        if (!rawResponse.ok) {
+          console.log('API Error Response:', data);
+          displayErrorMessage("API Error", (data as any).error || "Failed to process request");
+          return;
+        }
 
         let linkedAllSubtopics = true;
         let unlinkSuccessful = true;
         // if created successfully link question to subtopic
         if (data?.id) {
+          console.log('Linking subtopics for question:', data.id);
+          console.log('Subtopics to link:', questionSubtopics);
           linkedAllSubtopics = await handleLinkSubtopics(String(data.id));
+          console.log('Subtopics linked successfully:', linkedAllSubtopics);
         }
         if (data?.id) {
+          console.log('Unlinking old subtopics for question:', data.id);
+          console.log('Existing subtopic links:', existingSubtopicLinks);
           unlinkSuccessful = await handleUnLinkingSubtopics(String(data.id));
+          console.log('Subtopics unlinked successfully:', unlinkSuccessful);
         }
 
         if (!linkedAllSubtopics || !unlinkSuccessful || !data.id)

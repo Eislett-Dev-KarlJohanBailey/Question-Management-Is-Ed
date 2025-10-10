@@ -74,14 +74,20 @@ async function POST(req: NextApiRequest, res: NextApiResponse<QuestionDetails | 
   console.log('POST /api/questions (App Router)');
 
 
-  const questionDetails = await req.body;
+  const requestBody = await req.body;
+  console.log('POST request body:', requestBody);
 
-  // console.log('body', req.body)
+  // Extract questionDetails from the request body
+  const questionDetails = requestBody.questionDetails || requestBody;
+
+  console.log('Extracted questionDetails:', questionDetails);
 
   if (!questionDetails.title) {
+    console.log('Title validation failed:', { title: questionDetails.title, questionDetails });
     return res.status(400).json({ error: 'Title is required' });
   }
   else if (!questionDetails.content) {
+    console.log('Content validation failed:', { content: questionDetails.content, questionDetails });
     return res.status(400).json({ error: 'Content is required' });
   }
 
