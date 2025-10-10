@@ -754,13 +754,27 @@ export default function CreateQuestionPage() {
 
                 <div className="space-y-2">
                   <Label htmlFor="difficulty">
-                    Difficulty Level (0.1 - 1.0)
+                    Difficulty Level
                   </Label>
-                  <div className="space-y-3">
-                    <div className="flex items-center space-x-4">
+                  <div className="flex items-center space-x-4">
+                    <Input
+                      id="difficulty"
+                      type="range"
+                      min="0.1"
+                      max="1"
+                      step="0.1"
+                      value={formData.difficultyLevel || 0.1}
+                      onChange={(e) =>
+                        handleInputChange(
+                          "difficultyLevel",
+                          parseFloat(e.target.value)
+                        )
+                      }
+                      className="flex-1"
+                    />
+                    <div className="flex items-center space-x-2">
                       <Input
-                        id="difficulty"
-                        type="range"
+                        type="number"
                         min="0.1"
                         max="1"
                         step="0.1"
@@ -768,44 +782,20 @@ export default function CreateQuestionPage() {
                         onChange={(e) =>
                           handleInputChange(
                             "difficultyLevel",
-                            parseFloat(e.target.value)
+                            parseFloat(e.target.value) || 0.1
                           )
                         }
-                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                        style={{
-                          background: `linear-gradient(to right, #10b981 0%, #f59e0b 50%, #ef4444 100%)`
-                        }}
+                        className="w-20"
                       />
-                      <div className="flex flex-col items-center space-y-1">
-                        <Input
-                          type="number"
-                          min="0.1"
-                          max="1"
-                          step="0.1"
-                          value={formData.difficultyLevel || 0.1}
-                          onChange={(e) =>
-                            handleInputChange(
-                              "difficultyLevel",
-                              parseFloat(e.target.value) || 0.1
-                            )
-                          }
-                          className="w-20 text-center"
-                        />
-                        <span className="text-sm font-medium">
-                          {(formData.difficultyLevel * 10).toFixed(1)}/10
-                        </span>
-                      </div>
+                      <span className="text-sm font-medium">
+                        {(formData.difficultyLevel * 10).toFixed(1)}/10
+                      </span>
                     </div>
-                    <div className="flex justify-between text-xs text-muted-foreground">
-                      <span>Easy (0.1-0.3)</span>
-                      <span>Medium (0.4-0.6)</span>
-                      <span>Hard (0.7-1.0)</span>
-                    </div>
-                    <div className="flex justify-between text-xs">
-                      <span className="text-green-600">1.0</span>
-                      <span className="text-yellow-600">5.0</span>
-                      <span className="text-red-600">10.0</span>
-                    </div>
+                  </div>
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>Easy</span>
+                    <span>Medium</span>
+                    <span>Hard</span>
                   </div>
                 </div>
               </div>
