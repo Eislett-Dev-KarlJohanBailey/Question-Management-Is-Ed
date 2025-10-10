@@ -77,10 +77,11 @@ export default function UpdateQuestionPage() {
     //   )
     // }
     if (router.isReady && router.query.questionId) {
+      const isDuplicate = router.query.duplicate === 'true';
       dispatch(
         setQuestionFormData({
           field: "id",
-          value: String(router.query.questionId),
+          value: isDuplicate ? "" : String(router.query.questionId),
         })
       );
     }
@@ -89,6 +90,7 @@ export default function UpdateQuestionPage() {
     router.isReady,
     router.query.questionId,
     router.query.subtopic,
+    router.query.duplicate,
   ]);
 
   useEffect(() => {
@@ -97,9 +99,10 @@ export default function UpdateQuestionPage() {
     async function getQuestion() {
       dispatch(setQuestionFormIsLoading(true));
       let links = []; // existing subtopic links
+      const questionId = formData?.id || router.query.questionId;
       const results = await handleFetchQuestionById(
         authContext?.token,
-        formData?.id as string
+        questionId as string
       );
 
       if ((results as { error: string })?.error) {
@@ -112,9 +115,12 @@ export default function UpdateQuestionPage() {
       } else {
         // Populate form with data
         // console.log('Question details', results)
+        const isDuplicate = router.query.duplicate === 'true';
         const data = {
-          id: formData.id,
-          title: (results as QuestionDetails)?.title,
+          id: isDuplicate ? "" : formData.id,
+          title: isDuplicate 
+            ? `Copy of ${(results as QuestionDetails)?.title}` 
+            : (results as QuestionDetails)?.title,
           content: (results as QuestionDetails)?.content,
           description: (results as QuestionDetails)?.description,
           tags: (results as QuestionDetails)?.tags,
@@ -159,8 +165,8 @@ export default function UpdateQuestionPage() {
       setExistingSubtopicLinks(links);
     }
 
-    if (formData.id) getQuestion();
-  }, [authContext?.token, dispatch, formData.id]);
+    if (formData.id || router.query.questionId) getQuestion();
+  }, [authContext?.token, dispatch, formData.id, router.query.questionId]);
 
   //  GET LIST OF SUB TOPICS
   useEffect(() => {
@@ -472,7 +478,8 @@ export default function UpdateQuestionPage() {
       e.preventDefault();
       // console.log('FOrm Data', formData);
       // Validation
-      if (!formData.id) {
+      const isDuplicate = router.query.duplicate === 'true';
+      if (!isDuplicate && !formData.id) {
         // alert("Please enter a title")
         displayErrorMessage("Missing question id", "No question id found");
         return;
@@ -569,7 +576,7 @@ export default function UpdateQuestionPage() {
         params = removeNulls(params) as any;
 
         const rawResponse = await fetch("/api/questions", {
-          method: "PUT",
+          method: isDuplicate ? "POST" : "PUT",
           headers: {
             Accept: "application/json",
             "Content-Type": "application/json",
@@ -592,12 +599,12 @@ export default function UpdateQuestionPage() {
         if (!linkedAllSubtopics || !unlinkSuccessful || !data.id)
           displayErrorMessage(
             !data?.id
-              ? "Failed to update question!"
+              ? `Failed to ${isDuplicate ? 'create' : 'update'} question!`
               : "Failed to Link questions"
           );
         else {
           dispatch(resetQuestionPageSlice());
-          displaySuccessMessage("Question Updated!");
+          displaySuccessMessage(`Question ${isDuplicate ? 'Created' : 'Updated'}!`);
           setTimeout(
             () => router.push("/admin/topics/subtopics/questions"),
             1500
@@ -656,7 +663,10 @@ export default function UpdateQuestionPage() {
               Cancel
             </Button>
             <Button onClick={handleSubmit} disabled={isSubmitting}>
-              {isSubmitting ? "Updating..." : "Update Question"}
+              {isSubmitting 
+                ? (router.query.duplicate === 'true' ? "Creating..." : "Updating...") 
+                : (router.query.duplicate === 'true' ? "Create Question" : "Update Question")
+              }
             </Button>
           </div>
         </div>
@@ -1141,7 +1151,10 @@ export default function UpdateQuestionPage() {
                 Cancel
               </Button>
               <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "Updating..." : "Update Question"}
+                {isSubmitting 
+                  ? (router.query.duplicate === 'true' ? "Creating..." : "Updating...") 
+                  : (router.query.duplicate === 'true' ? "Create Question" : "Update Question")
+                }
               </Button>
             </CardFooter>
           </Card>

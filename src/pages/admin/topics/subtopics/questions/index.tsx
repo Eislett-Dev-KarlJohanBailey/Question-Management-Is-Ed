@@ -4,7 +4,7 @@ import { DataManagementLayout } from "@/components/layout/DataManagementLayout";
 import { DataTable } from "@/components/data/DataTable";
 import { DeleteConfirmationDialog } from "@/components/data/DeleteConfirmationDialog";
 import { Button } from "@/components/ui/button";
-import { Edit, Eye, MoreHorizontal, Trash } from "lucide-react";
+import { Edit, Eye, MoreHorizontal, Trash, Copy } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -300,6 +300,13 @@ export default function QuestionsPage() {
   const handleEdit = useCallback(
     (id: number | string) => {
       router.push(`/admin/topics/subtopics/questions/edit/${id}`);
+    },
+    [router]
+  );
+
+  const handleDuplicate = useCallback(
+    (id: number | string) => {
+      router.push(`/admin/topics/subtopics/questions/edit/${id}?duplicate=true`);
     },
     [router]
   );
@@ -619,6 +626,10 @@ export default function QuestionsPage() {
                   <Edit className="mr-2 h-4 w-4" />
                   Edit
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleDuplicate(question.id)}>
+                  <Copy className="mr-2 h-4 w-4" />
+                  Duplicate
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={() => handleDeleteClick(question.id)}
@@ -633,7 +644,7 @@ export default function QuestionsPage() {
         ),
       },
     ],
-    [getSubtopicName, handleDeleteClick, handleEdit, handleViewQuestion]
+    [getSubtopicName, handleDeleteClick, handleEdit, handleDuplicate, handleViewQuestion]
   );
 
   const sortOptions = useMemo(
