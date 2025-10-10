@@ -427,7 +427,12 @@ export default function SubjectsPage() {
           pagination={{
             currentPage,
             totalPages: Math.max(1, Math.ceil(filteredSubjects.length / 10)),
+            totalItems: filteredSubjects.length,
+            itemsPerPage: 10,
             onPageChange: handlePageChange,
+            showPageSizeSelector: false,
+            showPageInput: false,
+            showFirstLastButtons: false,
           }}
           emptyState={
             <div className="flex flex-col items-center justify-center py-8">

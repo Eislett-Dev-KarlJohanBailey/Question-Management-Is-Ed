@@ -116,7 +116,12 @@ export function SubtopicTable({
       pagination={{
         currentPage,
         totalPages,
+        totalItems: data.length,
+        itemsPerPage: 10,
         onPageChange,
+        showPageSizeSelector: false,
+        showPageInput: false,
+        showFirstLastButtons: false,
       }}
       emptyState={
         <div className="flex flex-col items-center justify-center py-8">

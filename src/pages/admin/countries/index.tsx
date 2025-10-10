@@ -311,7 +311,12 @@ export default function CountriesPage() {
           pagination={{
             currentPage,
             totalPages: Math.ceil(countries.length / 10),
+            totalItems: countries.length,
+            itemsPerPage: 10,
             onPageChange: setCurrentPage,
+            showPageSizeSelector: false,
+            showPageInput: false,
+            showFirstLastButtons: false,
           }}
           emptyState={
             <div className="flex flex-col items-center justify-center py-8">
