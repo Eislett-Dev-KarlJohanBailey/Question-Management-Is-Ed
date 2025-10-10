@@ -175,7 +175,7 @@ export default function UpdateQuestionPage() {
       const results = await handleFetchSubTopics(
         authContext?.token,
         1,
-        100,
+        1000, // Increased limit to get all subtopics
         topic_id
       );
 
