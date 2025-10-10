@@ -70,13 +70,8 @@ export default function UpdateQuestionPage() {
   );
   const [hasLoadedInitialData, setHasLoadedInitialData] = useState(false);
 
-  // Initialize subtopicId from URL query
+  // Initialize form data from URL query
   useEffect(() => {
-    // if (router.isReady && router.query.subtopic) {
-    //   dispatch(
-    //     setQuestionFormSubtopics({ operation_type: 'ADD', value: Number(router.query.subtopic) })
-    //   )
-    // }
     if (router.isReady && router.query.questionId) {
       const isDuplicate = router.query.duplicate === 'true';
       dispatch(
@@ -90,7 +85,6 @@ export default function UpdateQuestionPage() {
     dispatch,
     router.isReady,
     router.query.questionId,
-    router.query.subtopic,
     router.query.duplicate,
   ]);
 
@@ -114,24 +108,23 @@ export default function UpdateQuestionPage() {
           style: { background: "red", color: "white" },
           duration: 3500,
         });
-        // dispatch(resetQuestionPageSlice());
       } else {
         // Populate form with data
-        // console.log('Question details', results)
         const isDuplicate = router.query.duplicate === 'true';
+        const questionData = results as QuestionDetails;
+        
         const data = {
-          id: isDuplicate ? "" : formData.id,
+          id: isDuplicate ? "" : (formData.id || questionId),
           title: isDuplicate 
-            ? `Copy of ${(results as QuestionDetails)?.title}` 
-            : (results as QuestionDetails)?.title,
-          content: (results as QuestionDetails)?.content,
-          description: (results as QuestionDetails)?.description,
-          tags: (results as QuestionDetails)?.tags,
-          totalPotentialMarks: (results as QuestionDetails)
-            ?.totalPotentialMarks,
-          difficultyLevel: (results as QuestionDetails)?.difficultyLevel,
-          type: (results as QuestionDetails)?.type,
-          explanation: (results as QuestionDetails)?.explanation || "",
+            ? `Copy of ${questionData?.title}` 
+            : questionData?.title,
+          content: questionData?.content,
+          description: questionData?.description,
+          tags: questionData?.tags,
+          totalPotentialMarks: questionData?.totalPotentialMarks,
+          difficultyLevel: questionData?.difficultyLevel,
+          type: questionData?.type,
+          explanation: questionData?.explanation || "",
         };
 
         let newOptions = [];
@@ -141,26 +134,25 @@ export default function UpdateQuestionPage() {
             {
               id: 1,
               content: "True",
-              isCorrect: (results as QuestionDetails).isTrue,
+              isCorrect: questionData.isTrue,
             },
             {
               id: 2,
               content: "False",
-              isCorrect: !(results as QuestionDetails).isTrue,
+              isCorrect: !questionData.isTrue,
             },
           ];
         } else if (data.type === QuestionType.MULTIPLE_CHOICE) {
-          newOptions =
-            (results as QuestionDetails)?.multipleChoiceOptions ??
-            (results as any)?.options ??
-            [];
+          // Ensure each option has a proper unique ID
+          newOptions = (questionData?.multipleChoiceOptions ?? []).map((option, index) => ({
+            ...option,
+            id: option.id || (index + 1)
+          }));
         }
         data["multipleChoiceOptions"] = newOptions;
-        links = (results as QuestionDetails)?.subTopics.map((el) =>
-          String(el.id)
-        );
+        links = questionData?.subTopics?.map((el) => String(el.id)) || [];
 
-        // console.log('Question data', data)
+        // Set all form data at once to avoid state conflicts
         dispatch(setAllQuestionFormData(data as any));
         setHasLoadedInitialData(true);
       }
@@ -170,7 +162,7 @@ export default function UpdateQuestionPage() {
     }
 
     if (formData.id || router.query.questionId) getQuestion();
-  }, [authContext?.token, dispatch, formData.id, router.query.questionId, hasLoadedInitialData]);
+  }, [authContext?.token, dispatch, formData.id, router.query.questionId, hasLoadedInitialData, router.query.duplicate]);
 
   //  GET LIST OF SUB TOPICS
   useEffect(() => {
@@ -252,15 +244,8 @@ export default function UpdateQuestionPage() {
   // Handle option content change
   const handleOptionChange = useCallback(
     (id: number, content: string) => {
-      // setFormData(prev => ({
-      //   ...prev,
-      //   multipleChoiceOptions: prev.multipleChoiceOptions.map(option =>
-      //     option.id === id ? { ...option, content } : option
-      //   )
-      // }))
-
       const newOptions = formData.multipleChoiceOptions.map((option) =>
-        option.id === id ? { ...option, content } : option
+        option.id === id ? { ...option, content } : { ...option }
       );
 
       dispatch(
@@ -277,7 +262,7 @@ export default function UpdateQuestionPage() {
   const handleCorrectOptionChange = useCallback(
     (id: number) => {
       const newOptions = formData.multipleChoiceOptions.map((option) =>
-        option.id === id ? { ...option, isCorrect: !option.isCorrect } : option
+        option.id === id ? { ...option, isCorrect: !option.isCorrect } : { ...option }
       );
 
       dispatch(
